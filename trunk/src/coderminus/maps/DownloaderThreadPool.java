@@ -13,56 +13,94 @@ import java.util.Vector;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.Message;
 
-public class DownloaderThreadPool {
-
-	public class RequestsQueue {
+public class DownloaderThreadPool 
+{
+	public class RequestsQueue 
+	{
 		private Queue<String> queue = new LinkedList<String>();
 		private Object lock = new Object();
+		private TileQueueSizeWatcher sizeWatcher;
+		private int id;
 
-		public void queue(String imageKey) {
-			synchronized (lock ) {
-				if(!queue.contains(imageKey)) {
+		RequestsQueue(TileQueueSizeWatcher sizeWatcher, int id)
+		{
+			this.sizeWatcher = sizeWatcher;
+			this.id = id;
+		}
+		public void queue(String imageKey) 
+		{
+			synchronized (lock ) 
+			{
+				if(!queue.contains(imageKey)) 
+				{
 					queue.add(imageKey);
 				}
 			}
 		}
 
-		public String dequeue() {
-			synchronized (lock) {
-				if(queue.size() > 0) {
-					return queue.remove();
+		public String dequeue() 
+		{
+			synchronized (lock) 
+			{
+				try
+				{
+    				if(queue.size() > 0) 
+    				{
+    					String text = queue.remove();
+    					//sizeWatcher.onSizeChanged(queue.size());
+    					return text; 
+    				}
+    				else 
+    				{
+    					return "";
+    				}
 				}
-				else {
-					return "";
+				finally
+				{
 				}
 			}
 		}
 
-		public boolean hasRequest() {
-			synchronized (lock) {
+		public boolean hasRequest() 
+		{
+			synchronized (lock) 
+			{
 				return queue.size() != 0;
 			}
 		}
 
-		public void clear() {
-			synchronized (lock) {
+		public void clear() 
+		{
+			synchronized (lock) 
+			{
 				queue.clear();
+				if(sizeWatcher != null)
+				{
+					sizeWatcher.onSizeChanged(queue.size(), id);
+				}
 			}
+		}
+		public int size() 
+		{
+			return queue.size();
 		}
 	}
 
-	class DownloaderThread extends Thread {
-
+	class DownloaderThread extends Thread 
+	{
 		private RequestsQueue requests;
 		private MapTilesCache tilesCache;
 		private Handler       handler;
 		private static final int IO_BUFFER_SIZE = 8192;
 		private String urlBase                  = "http://tile.openstreetmap.org/";
 		byte[] buffer                           = new byte[8192];
+		private String currentImageKey          = "";
 
 		public DownloaderThread(RequestsQueue requests,
-				MapTilesCache tilesCache, Handler handler) {
+				MapTilesCache tilesCache, Handler handler) 
+		{
 			this.requests    = requests;
 			this.tilesCache  = tilesCache;
 			this.handler     = handler;
@@ -70,33 +108,51 @@ public class DownloaderThreadPool {
 		}
 
 		@Override
-		public void run() {
-			while(!isStopped()) {
-				if(loadTile(requests.dequeue())) {
-					handler.sendEmptyMessage(0);
+		public void run() 
+		{
+			while(!isStopped()) 
+			{
+				if(loadTile(requests.dequeue())) 
+				{
+					Message message = handler.obtainMessage();
+					message.arg1 = requests.size();
+					message.arg2 = requests.id;
+					message.what = 1;
+					handler.sendMessage(message);
 				}
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e) {
+				try 
+				{
+					Thread.sleep(50);
+				} 
+				catch (InterruptedException e) 
+				{
 					break;
 				}
 			}
 		}
 
-		private boolean isStopped() {
+		private boolean isStopped() 
+		{
 			return false;
 		}
 
-		private boolean loadTile(String imageKey) {
-			if(imageKey.equals("")) {
+		private boolean loadTile(String imageKey) 
+		{
+			this.currentImageKey = imageKey;
+			
+			if(imageKey.equals("")) 
+			{
 				return false;
 			}
-			if(!tilesCache.hasTile(imageKey)) {
+			if(!tilesCache.hasTileBitmap(imageKey)) 
+			{
 				tilesCache.loadFromFile(imageKey);
 			}
-			if(!tilesCache.hasTile(imageKey)) {
+			if(!tilesCache.hasTileBitmap(imageKey)) 
+			{
 				byte[] bitmapData = loadBitmap(imageKey);
-				if(bitmapData == null) {
+				if(bitmapData == null) 
+				{
 					return false;
 				}
 				tilesCache.addTile(imageKey, bitmapData);
@@ -104,14 +160,16 @@ public class DownloaderThreadPool {
 			return true;
 		}
 		
-		private byte[] loadBitmap(String imageKey) {
+		private byte[] loadBitmap(String imageKey) 
+		{
 			String key = urlBase + imageKey;
 			
 			InputStream in = null;
 			OutputStream out = null;
 			ByteArrayOutputStream dataStream = null;
 			
-			try {
+			try 
+			{
 				URL urL = new URL(key);
 				InputStream inStream = urL.openStream();
 				in = new BufferedInputStream(inStream, IO_BUFFER_SIZE);
@@ -123,41 +181,93 @@ public class DownloaderThreadPool {
 				out.flush();
 				out.close();
 				return dataStream.toByteArray();
-			} catch (IOException e) {
+			} 
+			catch (IOException e) 
+			{
 				//failedTiles.add(imageKey);
 			}
 			return null;
 		}
 
-		private void copy(InputStream in, OutputStream out) {
+		private void copy(InputStream in, OutputStream out) 
+		{
 			int read;
-			try {
-				while ((read = in.read(buffer)) != -1) {
+			try 
+			{
+				while ((read = in.read(buffer)) != -1) 
+				{
 					out.write(buffer, 0, read);
 				}
-			} catch (IOException e) {
+			} 
+			catch (IOException e) 
+			{
 				e.printStackTrace();
 			}
 		}
-		
-	}
 
-	private static final int POOL_SIZE = 6;
-
-	private RequestsQueue requests = new RequestsQueue();
-	private Vector<DownloaderThread> threads = new Vector<DownloaderThread>();
-
-	public DownloaderThreadPool(MapTilesCache tilesCache, Context context, Handler handler) {
-		for(int index = 0; index < POOL_SIZE; ++index) {
-			threads.add(new DownloaderThread(requests, tilesCache, handler));
+		public boolean isWorkingOn(String imageKey) 
+		{	
+			return currentImageKey.equals(imageKey);
 		}
 	}
 
-	public void addRequest(String imageKey) {
-		requests.queue(imageKey);
+	private static final int POOL_SIZE = 2;
+
+	private RequestsQueue localFileRequests;
+	private RequestsQueue remoteFileRequests;
+	
+	private Vector<DownloaderThread> threads = new Vector<DownloaderThread>();
+
+	private MapTilesCache tilesCache;
+
+	private Handler handler;
+
+	public DownloaderThreadPool(
+			MapTilesCache tilesCache, 
+			Context context, 
+			Handler handler, 
+			TileQueueSizeWatcher sizeWatcher) 
+	{
+		localFileRequests = new RequestsQueue(sizeWatcher, 0);
+		remoteFileRequests = new RequestsQueue(sizeWatcher, 1);
+		this.tilesCache = tilesCache;
+		this.handler = handler;
+		
+		for(int index = 0; index < POOL_SIZE; ++index) 
+		{
+			threads.add(new DownloaderThread(localFileRequests, tilesCache, handler));
+		}
+
+		for(int index = 0; index < POOL_SIZE; ++index) 
+		{
+			threads.add(new DownloaderThread(remoteFileRequests, tilesCache, handler));
+		}
 	}
 
-	public void clearRequests() {
-		requests.clear();
+	public void addRequest(String imageKey) 
+	{
+		if(tilesCache.isInFile(imageKey))
+		{
+			localFileRequests.queue(imageKey);
+			Message message = handler.obtainMessage();
+			message.arg1 = localFileRequests.size();
+			message.arg2 = 0;
+			message.what = 0;
+			handler.sendMessage(message);
+		}
+		else
+		{
+			remoteFileRequests.queue(imageKey);
+			Message message = handler.obtainMessage();
+			message.arg1 = remoteFileRequests.size();
+			message.arg2 = 1;
+			message.what = 0;
+			handler.sendMessage(message);
+		}
+	}
+
+	public void clearRequests() 
+	{
+		localFileRequests.clear();
 	}
 }

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -17,19 +18,30 @@ import android.view.View;
 import android.view.Window;
 import android.view.View.OnClickListener;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.RelativeLayout.LayoutParams;
 
-public class MapsActivity extends Activity {
+public class MapsActivity extends Activity implements TileQueueSizeWatcher
+{
     private static final int MENU_UPDATE_MAP_ID  = Menu.FIRST;
 	private static final int MENU_SAVE_MAP_ID    = Menu.FIRST + 1;
 	private static final int MENU_MY_LOCATION_ID = Menu.FIRST + 2;
 	private static final int MENU_PREFERENCES_ID = Menu.FIRST + 3;
+	
+	private static final int EDIT_PREFERENCES_CODE = 0;
     
     private OsmMapView mapView;
     private SharedPreferences prefs;
 	private int zoomLevel = 1;
 	private LocationManager locationManager = null;
+	private TextView localQueuTextView;
+	private TextView remoteQueueTextView;
+	private TextView zoomPosTextView;
+	private ImageButton zoomInButton;
+	private ImageButton zoomOutButton;
+	
 //	private Listener gpsStatusListener = new Listener() {
 //
 //		@Override
@@ -42,31 +54,37 @@ public class MapsActivity extends Activity {
 //		
 //	};
 	
-	private LocationListener locationListener = new LocationListener() {
-
+	private LocationListener locationListener = new LocationListener() 
+	{
 		@Override
-		public void onLocationChanged(Location location) {
-			if(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getBoolean("KEY_AUTOFOLLOW_LOCATION", false)) {
+		public void onLocationChanged(Location location) 
+		{
+			if(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getBoolean("KEY_AUTOFOLLOW_LOCATION", false)) 
+			{
 				onMyLocation();
 			}
 		}
 
 		@Override
-		public void onProviderDisabled(String provider) {
+		public void onProviderDisabled(String provider) 
+		{
 		}
 
 		@Override
-		public void onProviderEnabled(String provider) {
+		public void onProviderEnabled(String provider) 
+		{
 		}
 
 		@Override
-		public void onStatusChanged(String provider, int status, Bundle extras) {
+		public void onStatusChanged(String provider, int status, Bundle extras) 
+		{
 		}
 	};
 
 	/** Called when the activity is first created. */
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) 
+    {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
         
@@ -74,7 +92,7 @@ public class MapsActivity extends Activity {
         final RelativeLayout rl = (RelativeLayout)findViewById(R.id.relativeLayout);
         
         
-        mapView = new OsmMapView(this);
+        mapView = new OsmMapView(this, this);
         
         prefs = getSharedPreferences("MapsMinus", Context.MODE_PRIVATE);
 		zoomLevel = prefs.getInt("zoomLevel", 1);
@@ -85,27 +103,66 @@ public class MapsActivity extends Activity {
 		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 		
 		//locationManager.addGpsStatusListener(gpsStatusListener);
-		long updateTime = 5;
-		float updateDistance = 5.0f;
-		try {
-			updateTime = Long.parseLong(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_TIME", "5"));
-			updateDistance = Float.parseFloat(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_DISTANCE", "5"));
-		}
-		catch (Exception e) {
-			// TODO: handle exception
-		}
-		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-				updateTime*1000, updateDistance, locationListener);
+		
+		resetLocationListener();
         
         rl.addView(mapView, new RelativeLayout.LayoutParams(
         				LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
         
-        ImageButton zoomOutButton = new ImageButton(this);
+        localQueuTextView = new TextView(this);
+        localQueuTextView.setTextColor(Color.WHITE);
+        //debugTextView.setTextSize(22f);
+        localQueuTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
+        localQueuTextView.setTypeface(Typeface.DEFAULT_BOLD);
+
+        localQueuTextView.setText(" ");
+        final RelativeLayout.LayoutParams debugTextParams = 
+        	new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+        debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        //rl.addView(localQueuTextView, debugTextParams);
+
+        remoteQueueTextView = new TextView(this);
+        remoteQueueTextView.setTextColor(Color.WHITE);
+        //debugTextView.setTextSize(22f);
+        remoteQueueTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
+        remoteQueueTextView.setTypeface(Typeface.DEFAULT_BOLD);
+
+        remoteQueueTextView.setText(" ");
+        //final RelativeLayout.LayoutParams debugTextParams = 
+        //	new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        //debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+        //debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        
+        LinearLayout textsLayout = new LinearLayout(this);
+        textsLayout.setOrientation(LinearLayout.VERTICAL);
+        textsLayout.addView(remoteQueueTextView);
+        textsLayout.addView(localQueuTextView);
+        
+        rl.addView(textsLayout, debugTextParams);
+   
+        zoomPosTextView = new TextView(this);
+        zoomPosTextView.setTextColor(Color.WHITE);
+        //debugTextView.setTextSize(22f);
+        zoomPosTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
+        zoomPosTextView.setTypeface(Typeface.DEFAULT_BOLD);
+
+        zoomPosTextView.setText("Z : " + zoomLevel);
+        final RelativeLayout.LayoutParams zoomTextParams = 
+        	new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        zoomTextParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        zoomTextParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        rl.addView(zoomPosTextView, zoomTextParams);
+ 
+       
+        zoomOutButton = new ImageButton(this);
         zoomOutButton.setBackgroundColor(Color.TRANSPARENT);
         zoomOutButton.setImageResource(android.R.drawable.btn_minus);
-        zoomOutButton.setOnClickListener(new OnClickListener() {
+        zoomOutButton.setOnClickListener(new OnClickListener() 
+        {
 				@Override
-				public void onClick(View v) {
+				public void onClick(View v) 
+				{
 					onZoomOut();
 				}
         });
@@ -115,12 +172,14 @@ public class MapsActivity extends Activity {
         zoomOutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
         rl.addView(zoomOutButton, zoomOutParams);
 
-        ImageButton zoomInButton = new ImageButton(this);
+        zoomInButton = new ImageButton(this);
         zoomInButton.setBackgroundColor(Color.TRANSPARENT);
         zoomInButton.setImageResource(android.R.drawable.btn_plus);
-        zoomInButton.setOnClickListener(new OnClickListener(){
+        zoomInButton.setOnClickListener(new OnClickListener()
+        {
 			@Override
-			public void onClick(View v) {
+			public void onClick(View v) 
+			{
 				onZoomIn();
 			}
         });
@@ -132,27 +191,35 @@ public class MapsActivity extends Activity {
         rl.addView(zoomInButton, zoomInParams);
     }
     
-	protected void onZoomOut() {
-		--zoomLevel;
-		if(zoomLevel < 0) {
-			zoomLevel = 0;
+	protected void onZoomOut() 
+	{
+		if(zoomLevel > 0) 
+		{
+			--zoomLevel;
+			mapView.animateZoomOut(zoomLevel);
+			zoomPosTextView.setText("Z : " + (zoomLevel));
+			zoomOutButton.setEnabled(false);
 		}
-		mapView.animateZoomOut(zoomLevel);
+		
 	}
 
-	protected void onZoomIn() {
-		++zoomLevel;
-		if(zoomLevel > 18) {
-			zoomLevel = 18;
+	protected void onZoomIn() 
+	{
+		if(zoomLevel < 18) 
+		{
+			++zoomLevel;
+    		mapView.animateZoomIn(zoomLevel);
+    		zoomPosTextView.setText("Z : " + (zoomLevel));
+    		zoomInButton.setEnabled(false);
 		}
-		mapView.animateZoomIn(zoomLevel);
 	}
 
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
+	public boolean onCreateOptionsMenu(Menu menu) 
+	{
 		super.onCreateOptionsMenu(menu);
         menu.add(0, MENU_UPDATE_MAP_ID , 0, R.string.menu_update_map ).setIcon(android.R.drawable.ic_menu_mapmode    );
-        //menu.add(0, MENU_SAVE_MAP_ID   , 0, R.string.menu_save_map   ).setIcon(android.R.drawable.ic_menu_save      );
+        menu.add(0, MENU_SAVE_MAP_ID   , 0, R.string.menu_save_map   ).setIcon(android.R.drawable.ic_menu_save      );
         menu.add(0, MENU_MY_LOCATION_ID, 0, R.string.menu_my_location).setIcon(android.R.drawable.ic_menu_mylocation );
         menu.add(0, MENU_PREFERENCES_ID, 0, R.string.menu_preferences).setIcon(android.R.drawable.ic_menu_preferences);
 
@@ -160,21 +227,27 @@ public class MapsActivity extends Activity {
     }
 
 	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-			case MENU_UPDATE_MAP_ID: {
+	public boolean onOptionsItemSelected(MenuItem item) 
+	{
+		switch (item.getItemId()) 
+		{
+			case MENU_UPDATE_MAP_ID: 
+			{
 				onUpdateMap();
 				break;
 			}
-			case MENU_SAVE_MAP_ID: {
+			case MENU_SAVE_MAP_ID: 
+			{
 				onSaveMap();
 				break;
 			}
-			case MENU_MY_LOCATION_ID: {
+			case MENU_MY_LOCATION_ID: 
+			{
 				onMyLocation();
 				break;
 			}
-			case MENU_PREFERENCES_ID: {
+			case MENU_PREFERENCES_ID: 
+			{
 				onPreferences();
 				break;
 			}
@@ -183,18 +256,54 @@ public class MapsActivity extends Activity {
 		return super.onOptionsItemSelected(item);
 	}
 
-	private void onPreferences() {
+	private void onPreferences() 
+	{
 		Intent intent = new Intent(this, EditPreferencesActivity.class); 
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); 
         
-        startActivityForResult(intent, 0);
+        startActivityForResult(intent, EDIT_PREFERENCES_CODE);
 	}
 
-	private void onMyLocation() {
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) 
+	{
+		if(requestCode == EDIT_PREFERENCES_CODE) 
+		{
+			resetLocationListener();
+		}
+		super.onActivityResult(requestCode, resultCode, data);
+	}
+
+	private void resetLocationListener() 
+	{
+		locationManager.removeUpdates(locationListener);
+		long updateTime = 5;
+		float updateDistance = 5.0f;
+		try 
+		{
+			updateTime = Long.parseLong(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_TIME", "5"));
+			updateDistance = Float.parseFloat(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_DISTANCE", "5"));
+		}
+		catch (Exception e) 
+		{
+			// TODO: handle exception
+		}
+
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+				updateTime*1000, updateDistance, locationListener);
+
+		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+				updateTime*1000, updateDistance, locationListener);
+	}
+
+	private void onMyLocation() 
+	{
 		LocationProvider locationProvider = locationManager.getProvider(LocationManager.GPS_PROVIDER);
 		
 		Location lastKnownLocaiton = locationManager.getLastKnownLocation(locationProvider.getName());
-		if(lastKnownLocaiton != null) {
+		if(lastKnownLocaiton != null) 
+		{
 			Double lat = lastKnownLocaiton.getLatitude();//*1E6;
 			Double lon = lastKnownLocaiton.getLongitude();//*1E6;
 			
@@ -202,24 +311,28 @@ public class MapsActivity extends Activity {
 		}
 	}
 
-	private void onSaveMap() {
+	private void onSaveMap() 
+	{
 		mapView.cacheCurrentMap();
 	}
 
-	private void onUpdateMap() {
+	private void onUpdateMap() 
+	{
 		mapView.clearCurrentCache();
 		mapView.invalidate();
 	}
 	
 	@Override
-	public void onSaveInstanceState(Bundle savedInstanceState) {
+	public void onSaveInstanceState(Bundle savedInstanceState) 
+	{
 		savedInstanceState.putInt("offsetX", mapView.getOffsetX());
 		savedInstanceState.putInt("offsetY", mapView.getOffsetY());
 		super.onSaveInstanceState(savedInstanceState);
 	}
 	
 	@Override
-	public void onRestoreInstanceState(Bundle savedInstanceState) {
+	public void onRestoreInstanceState(Bundle savedInstanceState) 
+	{
 		super.onRestoreInstanceState(savedInstanceState);
 		mapView.setOffsetX(savedInstanceState.getInt("offsetX"));
 		mapView.setOffsetY(savedInstanceState.getInt("offsetY"));
@@ -227,7 +340,8 @@ public class MapsActivity extends Activity {
 //				5000L, 500.0f, locationListener);
 	}
 
-    protected void onPause() {
+    protected void onPause() 
+    {
 		super.onPause();
 		SharedPreferences.Editor ed = prefs.edit();
 		ed.putInt("offsetX", mapView.getOffsetX());
@@ -236,4 +350,31 @@ public class MapsActivity extends Activity {
 		ed.commit();
 		//locationManager.removeUpdates(locationListener);
     }
+
+	@Override
+	public void onSizeChanged(int size, int id) 
+	{
+		if(size == 0)
+		{
+			if(id == 0) localQueuTextView.setText("");
+			if(id == 1) remoteQueueTextView.setText("");
+		}
+		else
+		{
+			if(id == 0)	localQueuTextView.setText  ("Loading : " + size);
+			if(id == 1) remoteQueueTextView.setText("Caching : " + size);
+		}
+	}
+
+	@Override
+	public void enableZoomIn() 
+	{
+		zoomInButton.setEnabled(true);
+	}
+
+	@Override
+	public void enableZoomOut() 
+	{
+		zoomOutButton.setEnabled(true);
+	}
 }

@@ -16,14 +16,21 @@ public class EditPreferencesActivity extends PreferenceActivity {
 
 	@Override
 	public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen,
-			Preference preference) {
-		if(preference.getKey() != null) {
-			if(preference.getKey().equals("KEY_AUTOFOLLOW_LOCATION")) {
-//				Intent intent = new Intent(this, EditGroupsListActivity.class);
-//			    startActivityForResult(intent, 0);
+			Preference preference) 
+	{
+		if(preference.getKey() != null) 
+		{
+			if(preference.getKey().equals("KEY_AUTOFOLLOW_LOCATION")) 
+			{
+				onAutofollowLocation();
 			}
 		}
 		return super.onPreferenceTreeClick(preferenceScreen, preference);
+	}
+
+	private void onAutofollowLocation() 
+	{
+		
 	}
 
 }
