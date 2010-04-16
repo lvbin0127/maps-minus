@@ -9,6 +9,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Handler;
 import android.os.Message;
+import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
@@ -76,10 +77,14 @@ public class OsmMapView extends View
 	private int locationOffsetY;
 	private Bitmap currentPos = null;
 	private TileQueueSizeWatcher sizeWatcher;
-
-	public OsmMapView(Context context, TileQueueSizeWatcher sizeWatcher) 
+	
+	public OsmMapView(Context context, AttributeSet attrs) 
 	{
-		super(context);
+		super(context, attrs);
+	}
+
+	public void setSizeWatcher(TileQueueSizeWatcher sizeWatcher)
+	{
 		this.sizeWatcher = sizeWatcher;
 		tilesCache = new MapTilesCache(this.getContext(), handler, sizeWatcher);
         
@@ -90,9 +95,9 @@ public class OsmMapView extends View
 		zoomOutAnimation = new ScaleAnimation(1, 0.5f, 1, 0.5f, ScaleAnimation.RELATIVE_TO_SELF, 0.5f,
                 ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
 		zoomOutAnimation.setDuration(300L);
-		currentPos = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_maps_indicator_current_position);
+		currentPos = BitmapFactory.decodeResource(this.getContext().getResources(), R.drawable.ic_maps_indicator_current_position);
 	}
-
+	
 	@Override
 	protected void onDraw(Canvas canvas) 
 	{
