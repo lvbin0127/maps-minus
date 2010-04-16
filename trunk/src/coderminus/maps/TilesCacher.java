@@ -6,13 +6,13 @@ import android.os.AsyncTask;
 public class TilesCacher extends AsyncTask<Object, Object, Object>  
 {
 	private Tile nextTile = new Tile();
-	private TilesCache tilesCache;
+	private TilesProvider tilesProvider;
 	
 	@Override
 	protected Object doInBackground(Object... objs) 
 	{
 		Tile[] tiles  = (Tile[])       objs[0];
-		tilesCache    = (TilesCache)   objs[1];
+		tilesProvider = (TilesProvider)objs[1];
 		int zoomLevel = (Integer)      objs[2];
 		int stopLevel = (Integer)      objs[3];
 
@@ -31,46 +31,35 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		nextTile.mapX = tile.mapX * 2;
 		nextTile.mapY = tile.mapY * 2;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTile(nextTile))
-		{
-			getBitmap(nextTile);
-		}
+		getBitmap(nextTile);
+
 		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 		
 		nextTile.mapX = tile.mapX * 2 + 1;
 		nextTile.mapY = tile.mapY * 2;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTile(nextTile))
-		{
-			getBitmap(nextTile);
-		}
+		getBitmap(nextTile);
+
 		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 		
 		nextTile.mapX = tile.mapX * 2;
 		nextTile.mapY = tile.mapY * 2 + 1;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTile(nextTile))
-		{
-			getBitmap(nextTile);
-		}
+		getBitmap(nextTile);
+
 		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 		
 		nextTile.mapX = tile.mapX * 2 + 1;
 		nextTile.mapY = tile.mapY * 2 + 1;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTile(nextTile))
-		{
-			getBitmap(nextTile);
-		}
+		getBitmap(nextTile);
+
 		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 	}
 	
 	private void getBitmap(Tile tile) 
 	{
-//		if(!tilesCache.hasTile(tile.key)) 
-//		{
-//			tilesCache.queueTileRequest(tile.key);
-//		}
+		tilesProvider.getTileBitmap(tile);
 	}
 
 }

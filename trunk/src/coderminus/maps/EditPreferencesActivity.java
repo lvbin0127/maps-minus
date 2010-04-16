@@ -31,7 +31,7 @@ public class EditPreferencesActivity extends PreferenceActivity {
 			}
 			if(preference.getKey().equals("KEY_CONFIGURE_MAPS"))
 			{
-				onConfigureMaps();
+				//onConfigureMaps();
 			}
 		}
 		return super.onPreferenceTreeClick(preferenceScreen, preference);

@@ -44,6 +44,7 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 	private LocationManager locationManager = null;
 	private TextView localQueuTextView;
 	private TextView remoteQueueTextView;
+	private TextView resizingQueueTextView;
 	private TextView zoomPosTextView;
 	private ImageButton zoomInButton;
 	private ImageButton zoomOutButton;
@@ -122,7 +123,12 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
         localQueuTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         localQueuTextView.setTypeface(Typeface.DEFAULT_BOLD);
 
-        remoteQueueTextView = (TextView)findViewById(R.id.remoteQueuTextView);//new TextView(this);
+        resizingQueueTextView = (TextView)findViewById(R.id.resizedQueuTextView);
+        resizingQueueTextView.setTextColor(Color.WHITE);
+        resizingQueueTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
+        resizingQueueTextView.setTypeface(Typeface.DEFAULT_BOLD);
+
+        remoteQueueTextView = (TextView)findViewById(R.id.remoteQueuTextView);
         remoteQueueTextView.setTextColor(Color.WHITE);
         remoteQueueTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         remoteQueueTextView.setTypeface(Typeface.DEFAULT_BOLD);
@@ -497,6 +503,7 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		{
 			if(id == 0) localQueuTextView.setText("");
 			if(id == 1) remoteQueueTextView.setText("");
+			if(id == 2) resizingQueueTextView.setText("");
 		}
 		else
 		{
@@ -506,10 +513,14 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 			}
 			if(id == 1) 
 			{
-				if(!remoteQueueTextView.getText().toString().equals("Caching : " + size))
+//				if(!remoteQueueTextView.getText().toString().equals("Caching : " + size))
 				{
 					remoteQueueTextView.setText("Caching : " + size);
 				}
+			}
+			if(id == 2)	
+			{
+				resizingQueueTextView.setText  ("Resizing : " + size);
 			}
 		}
 	}

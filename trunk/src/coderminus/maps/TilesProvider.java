@@ -16,17 +16,17 @@ public class TilesProvider
 		inMemoryTilesCache = new TilesCache       (context, handler, sizeWatcher);
 		remoteTileLoader   = new RemoteTileLoader (inMemoryTilesCache, handler);
 		inFileTilesCache   = new InFileTilesCache (inMemoryTilesCache, handler);
-		resizedTilesCache  = new ResizedTilesCache(inFileTilesCache); 
+		resizedTilesCache  = new ResizedTilesCache(inFileTilesCache  , handler); 
 	}
 
 	public Bitmap getTileBitmap(Tile tile) 
 	{
-		if(inMemoryTilesCache.hasTile(tile))
+		if(inMemoryTilesCache.hasTile(tile.key))
 		{
-			return inMemoryTilesCache.getTileBitmap(tile);
+			return inMemoryTilesCache.getTileBitmap(tile.key);
 		}
 	
-		if(inFileTilesCache.hasTile(tile))
+		if(inFileTilesCache.hasTile(tile.key))
 		{
 			inFileTilesCache.queueTileRequest(tile);
 			return null;
@@ -39,9 +39,9 @@ public class TilesProvider
 			return resizedTilesCache.getTileBitmap(tile);
 		}
 		
-		if(inFileTilesCache.hasCandidateForResize(tile))
+		if(inFileTilesCache.getCandidateForResize(tile.zoom, tile.mapX, tile.mapY) != null)
 		{
-			resizedTilesCache.queueResize(tile, inFileTilesCache.getCandidateForResize(tile));
+			resizedTilesCache.queueResize(new ResizeTile(tile.key, tile.mapX, tile.mapY, tile.zoom));
 		}
 		
 		return null;
@@ -57,9 +57,8 @@ public class TilesProvider
 		inFileTilesCache.removeCachedTile(tile);
 	}
 
-	public Object getTilesCache() 
+	public void clearResizeCache() 
 	{
-		return inMemoryTilesCache;
+		resizedTilesCache.clear();
 	}
-
 }
