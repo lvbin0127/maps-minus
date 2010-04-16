@@ -15,15 +15,19 @@ public class InFileTilesCache
 		tileLoader = new LocalTileLoader(requests, tilesCache, handler);
 	}
 
-	public boolean hasTile(Tile tile) 
+	public boolean hasTile(String tileKey) 
 	{
-		final File sddir = new File(LocalTileLoader.getBaseDir() + tile.key + ".tile");
+		final File sddir = new File(LocalTileLoader.getBaseDir() + tileKey + ".tile");
 		return sddir.exists(); 
 	}
 
 	public void queueTileRequest(Tile tile) 
 	{
-		requests.queue(tile);
+		requests.queue(tile.key);
+		synchronized (tileLoader) 
+		{
+			tileLoader.notify();
+		}
 	}
 	
 	public void removeCachedTile(Tile tile) 
@@ -37,22 +41,16 @@ public class InFileTilesCache
 		file.delete();
 	}
 
-	public boolean hasCandidateForResize(Tile tile) 
+	public Tile getCandidateForResize(int zoom, int mapX, int mapY) 
 	{
-		return findClosestCachedMinusTile(tile) != null;
+		return findClosestCachedMinusTile(zoom, mapX, mapY);
 	}
 
-	public Tile getCandidateForResize(Tile tile) 
+	private Tile findClosestCachedMinusTile(int zoom, int mapX, int mapY) 
 	{
-		return findClosestCachedMinusTile(tile);
-	}
-
-	private Tile findClosestCachedMinusTile(Tile tile) 
-	{
-		//Bitmap closestBitmap  = null;
-		Tile minusZoomTile = generateMinusZoomTile(tile);
+		Tile minusZoomTile = generateMinusZoomTile(zoom, mapX, mapY);
 		
-		if((minusZoomTile != null) && hasTile(minusZoomTile))
+		if((minusZoomTile != null) && hasTile(minusZoomTile.key))
 		{
 			return minusZoomTile;
 		}
@@ -63,28 +61,28 @@ public class InFileTilesCache
 		return null;
 	}
 	
-	private Tile generateMinusZoomTile(Tile tile) 
+	private Tile generateMinusZoomTile(int zoom, int mapX, int mapY) 
 	{
-		if(tile.zoom == 0)
+		if(zoom == 0)
 		{
 			return null;
 		}
 		Tile minusZoomTile = new Tile();
-		minusZoomTile.zoom = tile.zoom - 1;
-		minusZoomTile.mapX = tile.mapX/2;
-		minusZoomTile.mapY = tile.mapY/2;
+		minusZoomTile.zoom = zoom - 1;
+		minusZoomTile.mapX = mapX/2;
+		minusZoomTile.mapY = mapY/2;
 		
-		minusZoomTile.offsetX = tile.offsetX;
-		minusZoomTile.offsetY = tile.offsetY;
+		//minusZoomTile.offsetX = tile.offsetX;
+		//minusZoomTile.offsetY = tile.offsetY;
 		minusZoomTile.key = 
 			minusZoomTile.zoom + "/" + minusZoomTile.mapX + "/" + minusZoomTile.mapY + ".png";
 		
 		return minusZoomTile;
 	}
 
-	public Bitmap getTileBitmap(Tile tile) 
+	public Bitmap getTileBitmap(String tileKey) 
 	{
-		return tileLoader.loadFromFile(tile);
+		return tileLoader.loadFromFile(tileKey);
 	}
 
 }

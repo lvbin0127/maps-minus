@@ -4,95 +4,126 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import android.graphics.Bitmap;
-import android.os.AsyncTask;
+import android.os.Handler;
 import android.os.Message;
 
 public class ResizedTilesCache extends Thread 
 {
 	class TileScaler
 	{
-		public void scale(Tile minusZoomTile, Tile tile, LRUMap<String, Bitmap> extrapolatedBitmapCache) 
+		public Bitmap scale(Bitmap minusZoomBitmap, Tile minusZoomTile, int mapX, int mapY)
 		{
-			Bitmap minusZoomBitmap = inFileTilesCache.getTileBitmap(minusZoomTile);
-			Bitmap closestBitmap = scaleUpAndChop(minusZoomBitmap, minusZoomTile, tile);
-			extrapolatedBitmapCache.put(tile.key, closestBitmap);
+			Bitmap closestBitmap = scaleUpAndChop(minusZoomBitmap, minusZoomTile.mapX, minusZoomTile.mapY, mapX, mapY);
+			return closestBitmap;
 		}
 		
-		private Bitmap scaleUpAndChop(Bitmap minusZoomBitmap, Tile minusZoomTile2,
-				Tile tile) 
+		private Bitmap scaleUpAndChop(Bitmap minusZoomBitmap, int minusMapX, int minusMapY, int mapX, int mapY) 
 		{
 			Bitmap bitmap = null;
-			int scale = (tile.zoom - minusZoomTile2.zoom);
-			if(scale > 1)
-			{
-				return null;
-			}
 			int xIncrement = 1;
-			if(minusZoomTile2.mapX != 1)
+			if(minusMapX != 1)
 			{
-				xIncrement = tile.mapX % 2;
+				xIncrement = mapX % 2;
 			}
 			int yIncrement = 1;
-			if(minusZoomTile2.mapY != 1)
+			if(minusMapY != 1)
 			{
-				yIncrement = tile.mapY % 2;
+				yIncrement = mapY % 2;
 			}
 			
-			bitmap = BitmapScaler.scaleTo(minusZoomBitmap, 256*scale*2, 256*scale*2);
-			bitmap = Bitmap.createBitmap(bitmap, (xIncrement*scale)*256, (yIncrement*scale)*256, 256, 256);
+			bitmap = BitmapScaler.scaleTo(minusZoomBitmap, 256*2, 256*2);
+			bitmap = Bitmap.createBitmap(bitmap, (xIncrement)*256, (yIncrement)*256, 256, 256);
 			return bitmap;
 		}
 
 	}
 
-	class ResizeTile
-	{
-		public ResizeTile(Tile tile, Tile candidateForResize) 
-		{
-			this.tile = tile;
-			this.candidateForResize = candidateForResize;
-		}
-		public Tile tile;
-		public Tile candidateForResize;
-	}
-	
 	private LRUMap<String, Bitmap> extrapolatedBitmapCache = new LRUMap<String, Bitmap>(5, 9);
 	private InFileTilesCache inFileTilesCache;
 	private Queue<ResizeTile> requests = new LinkedList<ResizeTile>();
 	private ResizeTile resizeTile;
 	private TileScaler tileScaler = new TileScaler();
+	private Object lock = new Object();
+	private Handler handler;
 
 	
-	public ResizedTilesCache(InFileTilesCache inFileTilesCache) 
+	public ResizedTilesCache(InFileTilesCache inFileTilesCache, Handler handler) 
 	{
 		this.inFileTilesCache = inFileTilesCache;
+		this.handler = handler;
+		start();
 	}
 
-	public void queueResize(Tile tile, Tile candidateForResize) 
+	public void queueResize(ResizeTile resizeRequest) 
 	{
-		if(!requests.contains(tile)) 
+		synchronized (lock) 
 		{
-			requests.add(new ResizeTile(tile, candidateForResize));
+			if(!hasRequest(resizeRequest) && !extrapolatedBitmapCache.containsKey(resizeRequest.key))
+			{
+				requests.add(resizeRequest);
+			}
+		}
+		synchronized (this) 
+		{
+			this.notify();
 		}
 	}
 	
+	private boolean hasRequest(ResizeTile resizeRequest) 
+	{
+		synchronized (lock) 
+		{
+    		for(ResizeTile request : requests)
+    		{
+    			if(request.key == resizeRequest.key)
+    			{
+    				return true;
+    			}
+    		}
+		}
+		return false;
+	}
+
 	@Override
 	public void run() 
 	{
 		while(true) 
 		{
-			resizeTile = requests.poll();
+			synchronized (lock) 
+			{
+				resizeTile = requests.poll();
+			}
+			
 			if(resizeTile != null)
 			{
-				tileScaler.scale(resizeTile.candidateForResize, resizeTile.tile, extrapolatedBitmapCache);
+				Tile minusZoomTile = inFileTilesCache.getCandidateForResize(resizeTile.zoom, resizeTile.mapX, resizeTile.mapY);
+				if(minusZoomTile != null)
+				{
+    				Bitmap minusZoomBitmap = inFileTilesCache.getTileBitmap(minusZoomTile.key);
+    
+    				Bitmap closestBitmap = tileScaler.scale(minusZoomBitmap, minusZoomTile, resizeTile.mapX, resizeTile.mapY);
+    				synchronized (lock) 
+    				{
+    					extrapolatedBitmapCache.put(resizeTile.key, closestBitmap);
+    				}
+				}
 
 				Message message = handler.obtainMessage();
-				message.what = 0;
+				message.arg1 = requests.size();
+				message.arg2 = 2;
+				message.what = 1;
 				handler.sendMessage(message);
 			}
 			try 
 			{
-				Thread.sleep(50);
+				synchronized (this) 
+				{
+    				if(requests.size() == 0)
+    				{
+    					this.wait();
+    				}
+				}
+				Thread.sleep(250);
 			} 
 			catch (InterruptedException e) 
 			{
@@ -108,6 +139,17 @@ public class ResizedTilesCache extends Thread
 
 	public Bitmap getTileBitmap(Tile tile) 
 	{
-		return extrapolatedBitmapCache.get(tile.key);
+		synchronized (lock) 
+		{
+			return extrapolatedBitmapCache.get(tile.key);
+		}
+	}
+
+	public void clear() 
+	{
+		synchronized (lock) 
+		{
+			extrapolatedBitmapCache.clear();
+		}		
 	}
 }

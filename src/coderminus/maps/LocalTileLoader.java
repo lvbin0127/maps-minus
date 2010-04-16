@@ -12,7 +12,6 @@ public class LocalTileLoader extends Thread
 
 	private RequestsQueue requests;
 	private TilesCache    tilesCache;
-	private Tile          tile;
 	private Handler       handler;
 	
 	public LocalTileLoader(RequestsQueue requests,	TilesCache tilesCache, Handler handler) 
@@ -26,12 +25,13 @@ public class LocalTileLoader extends Thread
 	@Override
 	public void run() 
 	{
+		String tileKey;
 		while(true) 
 		{
-			tile = requests.dequeue();
-			if(tile != null)
+			tileKey = requests.dequeue();
+			if(tileKey != null)
 			{
-				tilesCache.add(tile, loadFromFile(tile));
+				tilesCache.add(tileKey, loadFromFile(tileKey));
 				Message message = handler.obtainMessage();
 				message.arg1 = requests.size();
 				message.arg2 = requests.id;
@@ -40,7 +40,14 @@ public class LocalTileLoader extends Thread
 			}
 			try 
 			{
-				Thread.sleep(50);
+				synchronized (this) 
+				{
+					if(requests.size() == 0)
+					{
+						this.wait();
+					}
+				}
+				Thread.sleep(150);
 			} 
 			catch (InterruptedException e) 
 			{
@@ -49,15 +56,15 @@ public class LocalTileLoader extends Thread
 		}
 	}
 	
-	public Bitmap loadFromFile(Tile tile) 
+	public Bitmap loadFromFile(String tileKey) 
 	{
 		try
 		{
-			return BitmapFactory.decodeFile(cacheBase + tile.key + ".tile");
+			return BitmapFactory.decodeFile(cacheBase + tileKey + ".tile");
 		}
 		catch(Exception e)
 		{
-			Log.d("Maps::MapTilesCache", "loadFromFile(" + tile.key + ") failed");
+			Log.d("Maps::MapTilesCache", "loadFromFile(" + tileKey + ") failed");
 		}
 		return null;
 	}

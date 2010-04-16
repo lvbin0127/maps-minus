@@ -217,12 +217,17 @@ public class OsmMapView extends View
 			{
 				tiles[index] = new Tile();
 			}
-			tiles[index].mapX    = mapX + incrementsX[index];
-			tiles[index].mapY    = mapY + incrementsY[index];
-			tiles[index].offsetX = tiles[index].mapX * TILE_SIZE;
-			tiles[index].offsetY = tiles[index].mapY * TILE_SIZE;
-			tiles[index].zoom    = zoomLevel;
-			tiles[index].key     = zoomLevel + "/" + tiles[index].mapX + "/" + tiles[index].mapY + ".png";
+			
+			if(tiles[index].mapX != (mapX + incrementsX[index]) ||
+			   tiles[index].mapY != (mapY + incrementsY[index])	)
+			{
+    			tiles[index].mapX    = mapX + incrementsX[index];
+    			tiles[index].mapY    = mapY + incrementsY[index];
+    			tiles[index].offsetX = tiles[index].mapX * TILE_SIZE;
+    			tiles[index].offsetY = tiles[index].mapY * TILE_SIZE;
+    			tiles[index].zoom    = zoomLevel;
+    			tiles[index].key     = (zoomLevel + "/" + tiles[index].mapX + "/" + tiles[index].mapY + ".png").intern();
+			}
 		}		
 		return tiles;		
 	}
@@ -357,6 +362,7 @@ public class OsmMapView extends View
 		setOffsetY(getOffsetY()/2 + (getHeight()/4));
 		locationOffsetX = locationOffsetX/2;
 		locationOffsetY = locationOffsetY/2;
+		tilesProvider.clearResizeCache();
 	}
 
 	public void zoomIn() 
@@ -365,6 +371,7 @@ public class OsmMapView extends View
 		setOffsetY((getOffsetY())*2 - (getHeight()/2));
 		locationOffsetX = locationOffsetX*2;
 		locationOffsetY = locationOffsetY*2;
+		tilesProvider.clearResizeCache();
 //		Tile[] tiles = getTiles(zoomLevel, this.offsetX, this.offsetY, 9);
 //		for(Tile tile : tiles) 
 //		{
@@ -397,7 +404,7 @@ public class OsmMapView extends View
 
 	public void cacheCurrentMap(int level) 
 	{
-		new TilesCacher().execute(tiles, tilesProvider.getTilesCache(), zoomLevel, level);
+		new TilesCacher().execute(tiles, tilesProvider, zoomLevel, level);
 	}
 
 

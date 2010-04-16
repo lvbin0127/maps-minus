@@ -8,7 +8,8 @@ import java.util.Queue;
 
 public class RequestsQueue 
 {
-	private Queue<Tile>          queue = new LinkedList<Tile>();
+	private Queue<String> queue = new LinkedList<String>();
+	private Object lock = new Object();
 	int id;
 
 	RequestsQueue(int id)
@@ -16,36 +17,54 @@ public class RequestsQueue
 		this.id = id;
 	}
 	
-	public void queue(Tile tile) 
+	public void queue(String tileKey) 
 	{
-		if(!queue.contains(tile)) 
+		synchronized (lock) 
 		{
-			queue.add(tile);
+			if(!queue.contains(tileKey)) 
+			{
+				queue.add(tileKey);
+			}
 		}
 	}
 
-	public boolean contains(Tile tile)
+	public boolean contains(String tileKey)
 	{
-		return queue.contains(tile);
+		synchronized (lock) 
+		{
+			return queue.contains(tileKey);
+		}
 	}
 	
-	public Tile dequeue() 
+	public String dequeue() 
 	{
-		return queue.poll(); 
+		synchronized (lock) 
+		{
+			return queue.poll();
+		}
 	}
 
 	public boolean hasRequest() 
 	{
-		return queue.size() != 0;
+		synchronized (lock) 
+		{
+			return queue.size() != 0;
+		}
 	}
 
 	public void clear() 
 	{
-		queue.clear();
+		synchronized (lock) 
+		{
+			queue.clear();
+		}
 	}
 	
 	public int size() 
 	{
-		return queue.size();
+		synchronized (lock) 
+		{
+			return queue.size();
+		}
 	}
 }

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.util.Vector;
 
 import android.os.Handler;
 import android.os.Message;
@@ -20,6 +21,32 @@ public class RemoteTileLoader extends Thread
 	public static String urlBaseOSM_b = "http://b.tile.openstreetmap.org/";
 	public static String urlBaseOSM_c = "http://c.tile.openstreetmap.org/";
 	
+	class OsmBasePool
+	{
+		private Vector<String> bases = new Vector<String>();
+		private int iterator = 0;
+		
+		OsmBasePool()
+		{
+			bases.add(urlBaseOSM_a);
+			bases.add(urlBaseOSM_b);
+			bases.add(urlBaseOSM_c);
+		}
+		
+		public String getNextBase() 
+		{
+			++iterator;
+			if(iterator == bases.size())
+			{
+				iterator = 0;
+			}
+			
+			return bases.elementAt(iterator);
+		}
+		
+	}
+	
+	private OsmBasePool osmBasePool = new OsmBasePool();
 	//private String urlBaseGoogle            = "http://mt1.google.com/vt/x=1&y=0&z=1";
 
 	private static final int IO_BUFFER_SIZE = 8192;
@@ -27,7 +54,6 @@ public class RemoteTileLoader extends Thread
 
 	private RequestsQueue requestsQueue = new RequestsQueue(1);
 	private Handler handler;
-	private Tile currentTile;
 
 	public RemoteTileLoader(TilesCache tilesCache, Handler handler) 
 	{
@@ -37,18 +63,27 @@ public class RemoteTileLoader extends Thread
 
 	public void queueTileRequest(Tile tile) 
 	{
-		requestsQueue.queue(tile);
+   		requestsQueue.queue(tile.key);
+   		synchronized (this) 
+   		{
+   			this.notify();
+		}
 	}
 	
 	@Override
 	public void run() 
-	{
+	{	
+		String tileKey = null;
+
 		while(true) 
 		{
-			currentTile = requestsQueue.dequeue();
-			if(currentTile != null)
+			if(requestsQueue.hasRequest())
 			{
-				if(loadTile(currentTile.key)) 
+				tileKey = requestsQueue.dequeue();
+			}
+			if(tileKey != null)
+			{
+				if(loadTile(tileKey)) 
 				{
 					Message message = handler.obtainMessage();
 					message.arg1 = requestsQueue.size();
@@ -59,7 +94,14 @@ public class RemoteTileLoader extends Thread
 			}
 			try 
 			{
-				Thread.sleep(50);
+				synchronized (this) 
+				{
+					if(requestsQueue.size() == 0)
+					{
+						this.wait();
+					}
+				}
+				Thread.sleep(250);
 			} 
 			catch (InterruptedException e) 
 			{
@@ -81,7 +123,7 @@ public class RemoteTileLoader extends Thread
 			{
 				return false;
 			}
-			addTile(currentTile.key, bitmapData);
+			addTile(imageKey, bitmapData);
 			return true;
 		}
 		catch(Exception e)
@@ -93,7 +135,7 @@ public class RemoteTileLoader extends Thread
 	
 	private byte[] loadBitmap(String imageKey) throws InterruptedException 
 	{
-		String key = urlBaseOSM_a + imageKey;
+		String key = osmBasePool.getNextBase() + imageKey;
 		
 		InputStream in = null;
 		OutputStream out = null;

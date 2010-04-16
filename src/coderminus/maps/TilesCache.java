@@ -6,7 +6,7 @@ import android.os.Handler;
 
 public class TilesCache 
 {
-	private LRUMap<String, Bitmap> bitmapCache = new LRUMap<String, Bitmap>(10, 60);
+	private LRUMap<String, Bitmap> bitmapCache = new LRUMap<String, Bitmap>(10, 40);
 	private Object lock = new Object();
 
 	public TilesCache(Context context, Handler handler,
@@ -15,20 +15,20 @@ public class TilesCache
 		
 	}
 
-	public void add(Tile tile, Bitmap bitmap) 
+	public void add(String tileKey, Bitmap bitmap) 
 	{
 		synchronized (lock) 
 		{
-			bitmapCache.remove(tile.key);
-			bitmapCache.put(tile.key, bitmap);
+			bitmapCache.remove(tileKey);
+			bitmapCache.put(tileKey, bitmap);
 		}
 	}
 	
-	public boolean hasTile(Tile tile) 
+	public boolean hasTile(String tileKey) 
 	{
 		synchronized (lock) 
 		{		
-			return bitmapCache.containsKey(tile.key);
+			return bitmapCache.containsKey(tileKey);
 		}
 	}
 
@@ -40,11 +40,11 @@ public class TilesCache
 		}
 	}
 
-	public Bitmap getTileBitmap(Tile tile) 
+	public Bitmap getTileBitmap(String tileKey) 
 	{
 		synchronized (lock) 
 		{
-			return bitmapCache.get(tile.key);
+			return bitmapCache.get(tileKey);
 		}
 	}
 }

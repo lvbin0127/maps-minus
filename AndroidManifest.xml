@@ -19,8 +19,6 @@
         </activity>
     <activity android:name=".EditPreferencesActivity"></activity>
     <activity android:name=".ConfigureMapsActivity"></activity>
-    <!-- The application's publisher ID assigned by AdMob -->
-    <meta-data android:value="a14b7651cf213af" android:name="ADMOB_PUBLISHER_ID" />
 </application>
 
 <uses-permission android:name="android.permission.INTERNET"></uses-permission>
