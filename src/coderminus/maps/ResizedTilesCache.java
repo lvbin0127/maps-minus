@@ -123,7 +123,7 @@ public class ResizedTilesCache extends Thread
     					this.wait();
     				}
 				}
-				Thread.sleep(250);
+				Thread.sleep(50);
 			} 
 			catch (InterruptedException e) 
 			{

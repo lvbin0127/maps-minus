@@ -13,12 +13,16 @@ public class LocalTileLoader extends Thread
 	private RequestsQueue requests;
 	private TilesCache    tilesCache;
 	private Handler       handler;
+	private String        cachePath;
+
+	private String tilePostfix;
 	
 	public LocalTileLoader(RequestsQueue requests,	TilesCache tilesCache, Handler handler) 
 	{
 		this.requests     = requests;
 		this.tilesCache   = tilesCache;
 		this.handler      = handler;
+		this.cachePath    = cacheBase;
 		start();
 	}
 
@@ -47,7 +51,7 @@ public class LocalTileLoader extends Thread
 						this.wait();
 					}
 				}
-				Thread.sleep(150);
+				Thread.sleep(50);
 			} 
 			catch (InterruptedException e) 
 			{
@@ -60,7 +64,7 @@ public class LocalTileLoader extends Thread
 	{
 		try
 		{
-			return BitmapFactory.decodeFile(cacheBase + tileKey + ".tile");
+			return BitmapFactory.decodeFile(getBaseDir() + tileKey + tilePostfix);
 		}
 		catch(Exception e)
 		{
@@ -69,9 +73,24 @@ public class LocalTileLoader extends Thread
 		return null;
 	}
 
-	public static String getBaseDir() 
+	public String getBaseDir() 
 	{
-		return cacheBase;
+		return cachePath;
+	}
+
+	public void setBaseDir(String cachePath2) 
+	{
+		this.cachePath = cachePath2;
+	}
+
+	public void setTilePostfix(String tilePostfix) 
+	{
+		this.tilePostfix = tilePostfix;
+	}
+
+	public String getTilePostfix() 
+	{
+		return tilePostfix;
 	}
 
 }

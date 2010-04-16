@@ -14,8 +14,8 @@ public class TilesProvider
 	public TilesProvider(Context context, Handler handler, TileQueueSizeWatcher sizeWatcher)
 	{
 		inMemoryTilesCache = new TilesCache       (context, handler, sizeWatcher);
-		remoteTileLoader   = new RemoteTileLoader (inMemoryTilesCache, handler);
 		inFileTilesCache   = new InFileTilesCache (inMemoryTilesCache, handler);
+		remoteTileLoader   = new RemoteTileLoader (inFileTilesCache  , handler);
 		resizedTilesCache  = new ResizedTilesCache(inFileTilesCache  , handler); 
 	}
 
@@ -60,5 +60,15 @@ public class TilesProvider
 	public void clearResizeCache() 
 	{
 		resizedTilesCache.clear();
+	}
+
+	public void setCachePath(String cachePath) 
+	{
+		inFileTilesCache.setCachePath(cachePath);
+	}
+
+	public void setTilePostfix(String tilePostfix) 
+	{
+		inFileTilesCache.setTilePostfix(tilePostfix);
 	}
 }
