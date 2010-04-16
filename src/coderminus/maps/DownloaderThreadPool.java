@@ -20,6 +20,7 @@ public class DownloaderThreadPool
 	public static String urlBaseOSM_a = "http://a.tile.openstreetmap.org/";
 	public static String urlBaseOSM_b = "http://b.tile.openstreetmap.org/";
 	public static String urlBaseOSM_c = "http://c.tile.openstreetmap.org/";
+	//private String urlBaseGoogle            = "http://mt1.google.com/vt/x=1&y=0&z=1";
 
 	public class RequestsQueue 
 	{
@@ -44,26 +45,19 @@ public class DownloaderThreadPool
 			}
 		}
 
+		public boolean contains(String key)
+		{
+			synchronized (lock) 
+			{
+				return queue.contains(key);
+			}
+		}
+		
 		public String dequeue() 
 		{
 			synchronized (lock) 
 			{
-				try
-				{
-    				if(queue.size() > 0) 
-    				{
-    					String text = queue.remove();
-    					//sizeWatcher.onSizeChanged(queue.size());
-    					return text; 
-    				}
-    				else 
-    				{
-    					return "";
-    				}
-				}
-				finally
-				{
-				}
+    			return queue.poll(); 
 			}
 		}
 
@@ -86,9 +80,13 @@ public class DownloaderThreadPool
 				}
 			}
 		}
+		
 		public int size() 
 		{
-			return queue.size();
+			synchronized (lock) 
+			{
+				return queue.size();
+			}
 		}
 	}
 
@@ -98,7 +96,6 @@ public class DownloaderThreadPool
 		private MapTilesCache tilesCache;
 		private Handler       handler;
 		private static final int IO_BUFFER_SIZE = 8192;
-		//private String urlBaseGoogle            = "http://mt1.google.com/vt/x=1&y=0&z=1";
 		byte[] buffer                           = new byte[8192];
 		private String currentImageKey          = "";
 		private String urlBaseOSM;
@@ -118,13 +115,21 @@ public class DownloaderThreadPool
 		{
 			while(!isStopped()) 
 			{
-				if(loadTile(requests.dequeue())) 
+				currentImageKey = requests.dequeue();
+				if(currentImageKey != null)
 				{
-					Message message = handler.obtainMessage();
-					message.arg1 = requests.size();
-					message.arg2 = requests.id;
-					message.what = 1;
-					handler.sendMessage(message);
+    				if(loadTile(currentImageKey)) 
+    				{
+    					Message message = handler.obtainMessage();
+    					message.arg1 = requests.size();
+    					message.arg2 = requests.id;
+    					message.what = 1;
+    					handler.sendMessage(message);
+    				}
+    				else
+    				{
+    					requests.queue(currentImageKey);
+    				}
 				}
 				try 
 				{
@@ -144,29 +149,35 @@ public class DownloaderThreadPool
 
 		private boolean loadTile(String imageKey) 
 		{
-			this.currentImageKey = imageKey;
-			
-			if(imageKey.equals("")) 
+			if(imageKey == null) 
 			{
 				return false;
 			}
-			if(!tilesCache.hasTileBitmap(imageKey)) 
+			try
 			{
-				tilesCache.loadFromFile(imageKey);
+    			if(!tilesCache.hasTileBitmap(imageKey)) 
+    			{
+    				tilesCache.loadFromFile(imageKey);
+    			}
+    			if(!tilesCache.hasTileBitmap(imageKey)) 
+    			{
+    				byte[] bitmapData = loadBitmap(imageKey);
+    				if(bitmapData == null) 
+    				{
+    					return false;
+    				}
+    				tilesCache.addTile(imageKey, bitmapData);
+    			}
+    			return true;
 			}
-			if(!tilesCache.hasTileBitmap(imageKey)) 
+			catch(Exception e)
 			{
-				byte[] bitmapData = loadBitmap(imageKey);
-				if(bitmapData == null) 
-				{
-					return false;
-				}
-				tilesCache.addTile(imageKey, bitmapData);
+				
 			}
-			return true;
+			return false;
 		}
 		
-		private byte[] loadBitmap(String imageKey) 
+		private byte[] loadBitmap(String imageKey) throws InterruptedException 
 		{
 			String key = urlBaseOSM + imageKey;
 			
@@ -190,7 +201,7 @@ public class DownloaderThreadPool
 			} 
 			catch (IOException e) 
 			{
-				//failedTiles.add(imageKey);
+				Thread.sleep(3000);//failedTiles.add(imageKey);
 			}
 			return null;
 		}
@@ -209,11 +220,6 @@ public class DownloaderThreadPool
 			{
 				e.printStackTrace();
 			}
-		}
-
-		public boolean isWorkingOn(String imageKey) 
-		{	
-			return currentImageKey.equals(imageKey);
 		}
 	}
 
@@ -234,8 +240,9 @@ public class DownloaderThreadPool
 			Handler handler, 
 			TileQueueSizeWatcher sizeWatcher) 
 	{
-		localFileRequests = new RequestsQueue(sizeWatcher, 0);
+		localFileRequests  = new RequestsQueue(sizeWatcher, 0);
 		remoteFileRequests = new RequestsQueue(sizeWatcher, 1);
+		//failedRequests     = new RequestsQueue(sizeWatcher, 2);
 		this.tilesCache = tilesCache;
 		this.handler = handler;
 		
@@ -251,23 +258,26 @@ public class DownloaderThreadPool
 
 	public void addRequest(String imageKey) 
 	{
-		if(tilesCache.isInFile(imageKey))
+		if(!localFileRequests.contains(imageKey) && !remoteFileRequests.contains(imageKey))
 		{
-			localFileRequests.queue(imageKey);
-			Message message = handler.obtainMessage();
-			message.arg1 = localFileRequests.size();
-			message.arg2 = 0;
-			message.what = 0;
-			handler.sendMessage(message);
-		}
-		else
-		{
-			remoteFileRequests.queue(imageKey);
-			Message message = handler.obtainMessage();
-			message.arg1 = remoteFileRequests.size();
-			message.arg2 = 1;
-			message.what = 0;
-			handler.sendMessage(message);
+    		if(tilesCache.isInFile(imageKey))
+    		{
+    			localFileRequests.queue(imageKey);
+    			Message message = handler.obtainMessage();
+    			message.arg1 = localFileRequests.size();
+    			message.arg2 = 0;
+    			message.what = 0;
+    			handler.sendMessage(message);
+    		}
+    		else
+    		{
+    			remoteFileRequests.queue(imageKey);
+    			Message message = handler.obtainMessage();
+    			message.arg1 = remoteFileRequests.size();
+    			message.arg2 = 1;
+    			message.what = 0;
+    			handler.sendMessage(message);
+    		}
 		}
 	}
 

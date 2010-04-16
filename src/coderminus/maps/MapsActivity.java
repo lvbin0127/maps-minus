@@ -24,7 +24,6 @@ import android.view.View;
 import android.view.Window;
 import android.view.View.OnClickListener;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -76,7 +75,7 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		@Override
 		public void onLocationChanged(Location location) 
 		{
-			Log.d(TAG, "location chaged : lat - " + location.getLatitude() + "lon - " + location.getLongitude());
+			Log.d(TAG, "location changed : lat - " + location.getLatitude() + "lon - " + location.getLongitude());
 			if(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getBoolean("KEY_AUTOFOLLOW_LOCATION", false)) 
 			{
 				onMyLocation(location);
@@ -112,42 +111,21 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
         final RelativeLayout rl = (RelativeLayout)findViewById(R.id.relativeLayout);
         
         mapView = (OsmMapView) findViewById(R.id.osmMapView);
-        mapView.setSizeWatcher(this);//new OsmMapView(this, this);
+        mapView.setSizeWatcher(this);
         
-        prefs = getSharedPreferences("MapsMinus", Context.MODE_PRIVATE);
-		zoomLevel = prefs.getInt("zoomLevel", 1);
-		mapView.setZoom(zoomLevel);
-		mapView.setOffsetX(prefs.getInt("offsetX", 0));
-		mapView.setOffsetY(prefs.getInt("offsetY", 0));
-		
-		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        initializeDataMembers();
 		
 		//locationManager.addGpsStatusListener(gpsStatusListener);
 		
-        localQueuTextView = new TextView(this);
+        localQueuTextView = (TextView)findViewById(R.id.localQueuTextView);
         localQueuTextView.setTextColor(Color.WHITE);
         localQueuTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         localQueuTextView.setTypeface(Typeface.DEFAULT_BOLD);
 
-        localQueuTextView.setText(" ");
-        final RelativeLayout.LayoutParams debugTextParams = 
-        	new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-        debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-
-        remoteQueueTextView = new TextView(this);
+        remoteQueueTextView = (TextView)findViewById(R.id.remoteQueuTextView);//new TextView(this);
         remoteQueueTextView.setTextColor(Color.WHITE);
         remoteQueueTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         remoteQueueTextView.setTypeface(Typeface.DEFAULT_BOLD);
-
-        remoteQueueTextView.setText(" ");
-        
-        LinearLayout textsLayout = new LinearLayout(this);
-        textsLayout.setOrientation(LinearLayout.VERTICAL);
-        textsLayout.addView(remoteQueueTextView);
-        textsLayout.addView(localQueuTextView);
-        
-        rl.addView(textsLayout, debugTextParams);
    
         zoomPosTextView = new TextView(this);
         zoomPosTextView.setTextColor(Color.WHITE);
@@ -199,6 +177,11 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
         
         cacheLevelAdapter = new CacheLevelAdapter(this);
 		
+        initializeCacheLevelAdapter();        
+    }
+    
+	private void initializeCacheLevelAdapter() 
+	{
 		cacheLevelAdapter.addCacheLevel(
 				new CacheLevel(
 						"Level 2", 
@@ -268,8 +251,20 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 				new CacheLevel(
 						"Level 17", 
 						BitmapFactory.decodeResource(getResources(), R.drawable.level17)));
-    }
-    
+	}
+
+	private void initializeDataMembers() 
+	{
+        prefs = getSharedPreferences("MapsMinus", Context.MODE_PRIVATE);
+		zoomLevel = prefs.getInt("zoomLevel", 1);
+
+		mapView.setZoom(zoomLevel);
+		mapView.setOffsetX(prefs.getInt("offsetX", 0));
+		mapView.setOffsetY(prefs.getInt("offsetY", 0));
+		
+		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+	}
+
 	protected void onZoomOut() 
 	{
 		if(zoomLevel > 0) 
@@ -356,6 +351,7 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		if(requestCode == EDIT_PREFERENCES_CODE) 
 		{
 			resetLocationListener();
+			setScreenProperties();
 		}
 		super.onActivityResult(requestCode, resultCode, data);
 	}
@@ -444,7 +440,20 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 	@Override
 	protected void onResume() {
 		registerLocationListeners();
+		setScreenProperties();
 		super.onResume();
+	}
+	
+	private void setScreenProperties() 
+	{
+		if(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getBoolean("KEY_SCREEN_ON", false)) 
+		{
+			mapView.setKeepScreenOn(true);
+		}
+		else
+		{
+			mapView.setKeepScreenOn(false);
+		}
 	}
 
 	private void registerLocationListeners() {
@@ -476,7 +485,8 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		unregisterLocationListeners();
     }
 
-	private void unregisterLocationListeners() {
+	private void unregisterLocationListeners() 
+	{
 		locationManager.removeUpdates(locationListener);
 	}
 
@@ -490,8 +500,17 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		}
 		else
 		{
-			if(id == 0)	localQueuTextView.setText  ("Loading : " + size);
-			if(id == 1) remoteQueueTextView.setText("Caching : " + size);
+			if(id == 0)	
+			{
+				localQueuTextView.setText  ("Loading : " + size);
+			}
+			if(id == 1) 
+			{
+				if(!remoteQueueTextView.getText().toString().equals("Caching : " + size))
+				{
+					remoteQueueTextView.setText("Caching : " + size);
+				}
+			}
 		}
 	}
 
