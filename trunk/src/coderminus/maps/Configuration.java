@@ -7,17 +7,22 @@ import android.preference.PreferenceManager;
 public class Configuration {
 	private static SharedPreferences preferences = null;
 
-	private static SharedPreferences getPreferences(Context activity) 
+	private static SharedPreferences getPreferences(Context context) 
 	{
 		if(preferences == null) 
 		{
-			preferences = PreferenceManager.getDefaultSharedPreferences(activity);
+			preferences = PreferenceManager.getDefaultSharedPreferences(context);
 		}
 		return preferences;
 	}
 
-	public static String getCachePath(Context activity) 
+	public static String getCachePath(Context context) 
 	{	
-		return getPreferences(activity).getString("KEY_CACHE_PATH", "/sdcard/mapsminus/osm");
+		return getPreferences(context).getString("KEY_CACHE_PATH", "/sdcard/mapsminus/osm/");
+	}
+
+	public static String getTilePostfix(Context context) 
+	{	
+		return getPreferences(context).getString("KEY_TILE_POSTFIX", ".tile");
 	}
 }

@@ -77,10 +77,12 @@ public class OsmMapView extends View
 	private Bitmap currentPos = null;
 	private TileQueueSizeWatcher sizeWatcher;
 	private TilesProvider tilesProvider;
+	private Context context;
 	
 	public OsmMapView(Context context, AttributeSet attrs) 
 	{
 		super(context, attrs);
+		this.context = context;
 		
 		zoomInAnimation = new ScaleAnimation(1.0f, 1.5f, 1.0f, 1.5f, ScaleAnimation.RELATIVE_TO_SELF, 0.5f,
                 ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
@@ -96,6 +98,8 @@ public class OsmMapView extends View
 	{
 		this.sizeWatcher = sizeWatcher;
 		tilesProvider = new TilesProvider(this.getContext(), handler, sizeWatcher);
+		tilesProvider.setCachePath(Configuration.getCachePath(context));
+		tilesProvider.setTilePostfix(Configuration.getTilePostfix(context));
 	}
 	
 	@Override

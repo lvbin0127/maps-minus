@@ -33,7 +33,14 @@
 	        android:title="Set tiles cache path"
 	        android:summary="Click to enter tiles local cache path"
 	        android:dialogTitle="Folder path" 
-	        android:defaultValue="/sdcard/coderminus/maps/osm/"/>
+	        android:defaultValue="/sdcard/mapsminus/osm/"/>
+	        
+        <EditTextPreference
+            android:key="KEY_TILE_POSTFIX"
+            android:title="Set tile file postfix"
+            android:summary="To avoid gallery application indexing"
+            android:dialogTitle="Postfix" 
+            android:defaultValue=".tile"/>
         
     </PreferenceScreen>
    

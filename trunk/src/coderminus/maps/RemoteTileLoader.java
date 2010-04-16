@@ -3,13 +3,11 @@ package coderminus.maps;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.util.StringTokenizer;
 import java.util.Vector;
 
 import android.os.Handler;
@@ -21,6 +19,10 @@ public class RemoteTileLoader extends Thread
 	public static String urlBaseOSM_b = "http://b.tile.openstreetmap.org/";
 	public static String urlBaseOSM_c = "http://c.tile.openstreetmap.org/";
 	
+	public static String urlBaseGoogle_1 = "http://mt1.google.com/vt/";
+	public static String urlBaseGoogle_2 = "http://mt2.google.com/vt/";
+	public static String urlBaseGoogle_3 = "http://mt3.google.com/vt/";
+	
 	class OsmBasePool
 	{
 		private Vector<String> bases = new Vector<String>();
@@ -28,9 +30,13 @@ public class RemoteTileLoader extends Thread
 		
 		OsmBasePool()
 		{
-			bases.add(urlBaseOSM_a);
-			bases.add(urlBaseOSM_b);
-			bases.add(urlBaseOSM_c);
+//			bases.add(urlBaseOSM_a);
+//			bases.add(urlBaseOSM_b);
+//			bases.add(urlBaseOSM_c);
+
+			bases.add(urlBaseGoogle_1);
+			bases.add(urlBaseGoogle_2);
+			bases.add(urlBaseGoogle_3);
 		}
 		
 		public String getNextBase() 
@@ -54,10 +60,12 @@ public class RemoteTileLoader extends Thread
 
 	private RequestsQueue requestsQueue = new RequestsQueue(1);
 	private Handler handler;
+	private InFileTilesCache inFileTilesCache;
 
-	public RemoteTileLoader(TilesCache tilesCache, Handler handler) 
+	public RemoteTileLoader(InFileTilesCache inFileTilesCache, Handler handler) 
 	{
-		this.handler       = handler;
+		this.handler = handler;
+		this.inFileTilesCache = inFileTilesCache;
 		start();
 	}
 
@@ -135,7 +143,7 @@ public class RemoteTileLoader extends Thread
 	
 	private byte[] loadBitmap(String imageKey) throws InterruptedException 
 	{
-		String key = osmBasePool.getNextBase() + imageKey;
+		String tileUrl = osmBasePool.getNextBase() + generateUrl(imageKey);
 		
 		InputStream in = null;
 		OutputStream out = null;
@@ -143,7 +151,7 @@ public class RemoteTileLoader extends Thread
 		
 		try 
 		{
-			URL urL = new URL(key);
+			URL urL = new URL(tileUrl);
 			InputStream inStream = urL.openStream();
 			in = new BufferedInputStream(inStream, IO_BUFFER_SIZE);
 
@@ -160,6 +168,15 @@ public class RemoteTileLoader extends Thread
 			Thread.sleep(3000);//failedTiles.add(imageKey);
 		}
 		return null;
+	}
+
+	private String generateUrl(String imageKey) 
+	{
+		StringTokenizer tokenizer = new StringTokenizer(imageKey, "/.");
+		String zoom = tokenizer.nextToken();
+		String mapX = tokenizer.nextToken();
+		String mapY = tokenizer.nextToken();
+		return "x=" + mapX + "&y=" + mapY + "&z=" + zoom;
 	}
 
 	private void copy(InputStream in, OutputStream out) 
@@ -184,42 +201,7 @@ public class RemoteTileLoader extends Thread
 		{
 			return;
 		}
-		saveBufferToFile(bitmapData, LocalTileLoader.getBaseDir() + imageKey + ".tile");
-
-		//cacheBitmap(imageKey, BitmapFactory.decodeByteArray(bitmapData, 0, bitmapData.length));
-	}
-
-	private void saveBufferToFile(byte[] bitmapData, String fileName) 
-	{
-		ensureFolderExists(fileName.substring(0, fileName.lastIndexOf('/')));
-
-        FileOutputStream fos = null;
-		try 
-		{
-			fos = new FileOutputStream(fileName);
-			final BufferedOutputStream bos = new BufferedOutputStream(fos, 8192);
 		
-			bos.write(bitmapData);
-        	bos.flush();
-	        bos.close();
-		} 
-		catch (FileNotFoundException e) 
-		{
-			//Log(e);
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
+		inFileTilesCache.addBitmap(imageKey, bitmapData);
 	}
-
-	private void ensureFolderExists(String path) 
-	{
-        final File folder = new File(path);
-		if (!folder.mkdirs()) 
-		{
-			//throw new Exception();
-		}
-	}
-
 }
