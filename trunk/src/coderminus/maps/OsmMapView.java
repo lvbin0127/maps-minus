@@ -4,6 +4,7 @@ import java.util.Vector;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Handler;
@@ -77,6 +78,7 @@ public class OsmMapView extends View {
 	private int pendingZoomLevel;
 	private int locationOffsetX;
 	private int locationOffsetY;
+	private Bitmap currentPos = null;
 
 	public OsmMapView(Context context) {
 		super(context);
@@ -88,6 +90,7 @@ public class OsmMapView extends View {
 		zoomOutAnimation = new ScaleAnimation(1, 0.5f, 1, 0.5f, ScaleAnimation.RELATIVE_TO_SELF, 0.5f,
                 ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
 		zoomOutAnimation.setDuration(300L);
+		currentPos = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_maps_indicator_current_position);
 	}
 
 	@Override
@@ -102,16 +105,21 @@ public class OsmMapView extends View {
 				if(bitmap != null) {
 					canvas.drawBitmap(bitmap, this.offsetX + tile.offsetX, this.offsetY + tile.offsetY, this.paint);
 				}
-				//drawLocation(canvas);
+				drawLocation(canvas);
 			}
 		}
 	}
 
-//	private void drawLocation(Canvas canvas) {
-//		if(isPointOnScreen(locationOffsetX, locationOffsetY)) {
-//			canvas.drawCircle(this.offsetX + locationOffsetX, this.offsetY + locationOffsetY, 4, this.paint);
-//		}
-//	}
+	private void drawLocation(Canvas canvas) {
+		//if(isPointOnScreen(locationOffsetX, locationOffsetY)) {
+		int x = this.offsetX - this.locationOffsetX - 20;
+		int y = this.offsetY - this.locationOffsetY - 20;
+			canvas.drawBitmap(
+					currentPos, 
+					x, 
+					y, this.paint);
+		//}
+	}
 
 	private boolean isOnScreen(Tile tile) {
 		int upperLeftX = tile.offsetX + this.offsetX;
@@ -253,13 +261,17 @@ public class OsmMapView extends View {
 	}
 
 	public void zoomOut() {
-		setOffsetX(getOffsetX() / 2 + (getWidth ()/4));
-		setOffsetY(getOffsetY() / 2 + (getHeight()/4));
+		setOffsetX(getOffsetX()/2 + (getWidth ()/4));
+		setOffsetY(getOffsetY()/2 + (getHeight()/4));
+		locationOffsetX = locationOffsetX/2;
+		locationOffsetY = locationOffsetY/2;
 	}
 
 	public void zoomIn() {
-		setOffsetX((getOffsetX()) * 2 - (getWidth ()/2));
-		setOffsetY((getOffsetY()) * 2 - (getHeight()/2));
+		setOffsetX((getOffsetX())*2 - (getWidth ()/2));
+		setOffsetY((getOffsetY())*2 - (getHeight()/2));
+		locationOffsetX = locationOffsetX*2;
+		locationOffsetY = locationOffsetY*2;
 	}
 
 	public void animateZoomOut(int zoomLevel) {
@@ -287,8 +299,7 @@ public class OsmMapView extends View {
 		double merc_x = convertLonToMercX(lon);
 		double merc_y = convertLatToMercY(lat);
 		
-		int mapWidth = (int) (Math.pow(2, zoomLevel) * 256);
-		//int mapHeight = mapWidth;
+		double mapWidth = (Math.pow(2, zoomLevel) * 256);
 		
 		double pixelSize = mapWidth/(Mercator.MAX_X * 2);
 		
