@@ -17,6 +17,10 @@ import android.os.Message;
 
 public class DownloaderThreadPool 
 {
+	public static String urlBaseOSM_a = "http://a.tile.openstreetmap.org/";
+	public static String urlBaseOSM_b = "http://b.tile.openstreetmap.org/";
+	public static String urlBaseOSM_c = "http://c.tile.openstreetmap.org/";
+
 	public class RequestsQueue 
 	{
 		private Queue<String> queue = new LinkedList<String>();
@@ -94,16 +98,18 @@ public class DownloaderThreadPool
 		private MapTilesCache tilesCache;
 		private Handler       handler;
 		private static final int IO_BUFFER_SIZE = 8192;
-		private String urlBase                  = "http://tile.openstreetmap.org/";
+		//private String urlBaseGoogle            = "http://mt1.google.com/vt/x=1&y=0&z=1";
 		byte[] buffer                           = new byte[8192];
 		private String currentImageKey          = "";
+		private String urlBaseOSM;
 
 		public DownloaderThread(RequestsQueue requests,
-				MapTilesCache tilesCache, Handler handler) 
+				MapTilesCache tilesCache, Handler handler, String urlBaseOSM) 
 		{
 			this.requests    = requests;
 			this.tilesCache  = tilesCache;
 			this.handler     = handler;
+			this.urlBaseOSM  = urlBaseOSM;
 			start();
 		}
 
@@ -162,7 +168,7 @@ public class DownloaderThreadPool
 		
 		private byte[] loadBitmap(String imageKey) 
 		{
-			String key = urlBase + imageKey;
+			String key = urlBaseOSM + imageKey;
 			
 			InputStream in = null;
 			OutputStream out = null;
@@ -235,13 +241,12 @@ public class DownloaderThreadPool
 		
 		for(int index = 0; index < POOL_SIZE; ++index) 
 		{
-			threads.add(new DownloaderThread(localFileRequests, tilesCache, handler));
+			threads.add(new DownloaderThread(localFileRequests, tilesCache, handler, null));
 		}
 
-		for(int index = 0; index < POOL_SIZE; ++index) 
-		{
-			threads.add(new DownloaderThread(remoteFileRequests, tilesCache, handler));
-		}
+		threads.add(new DownloaderThread(remoteFileRequests, tilesCache, handler, urlBaseOSM_a));
+		threads.add(new DownloaderThread(remoteFileRequests, tilesCache, handler, urlBaseOSM_b));
+		threads.add(new DownloaderThread(remoteFileRequests, tilesCache, handler, urlBaseOSM_c));
 	}
 
 	public void addRequest(String imageKey) 

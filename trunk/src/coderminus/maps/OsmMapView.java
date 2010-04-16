@@ -75,9 +75,7 @@ public class OsmMapView extends View
 	private int locationOffsetX;
 	private int locationOffsetY;
 	private Bitmap currentPos = null;
-	private Tile nextTile = new Tile();
 	private TileQueueSizeWatcher sizeWatcher;
-	//private Tile minusZoomTile = new Tile();
 
 	public OsmMapView(Context context, TileQueueSizeWatcher sizeWatcher) 
 	{
@@ -115,47 +113,47 @@ public class OsmMapView extends View
 		}
 	}
 
-	private void queueNextZoomAhead(Tile tile) 
-	{
-		if(zoomLevel >= 17) return;
-		int nextZoomLevel = zoomLevel + 1;
-		
-		nextTile.mapX = tile.mapX * 2;
-		nextTile.mapY = tile.mapY * 2;
-		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
-		//if(!tilesCache.isInFile(nextTile.key))
-		{
-			getBitmap(nextTile);
-		}
-		
-		nextTile.mapX = tile.mapX * 2 + 1;
-		nextTile.mapY = tile.mapY * 2;
-		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
-		//if(!tilesCache.isInFile(nextTile.key))
-		{
-			getBitmap(nextTile);
-		}
-		
-		nextTile.mapX = tile.mapX * 2;
-		nextTile.mapY = tile.mapY * 2 + 1;
-		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
-		//if(!tilesCache.isInFile(nextTile.key))
-		{
-			getBitmap(nextTile);
-		}
-		
-		nextTile.mapX = tile.mapX * 2 + 1;
-		nextTile.mapY = tile.mapY * 2 + 1;
-		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
-		//if(!tilesCache.isInFile(nextTile.key))
-		{
-			getBitmap(nextTile);
-		}
-	}
+//	private void queueNextZoomAhead(Tile tile) 
+//	{
+//		if(zoomLevel >= 17) return;
+//		int nextZoomLevel = zoomLevel + 1;
+//		
+//		nextTile.mapX = tile.mapX * 2;
+//		nextTile.mapY = tile.mapY * 2;
+//		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
+//		if(!tilesCache.hasTileBitmap(nextTile.key))
+//		//if(!tilesCache.isInFile(nextTile.key))
+//		{
+//			getBitmap(nextTile);
+//		}
+//		
+//		nextTile.mapX = tile.mapX * 2 + 1;
+//		nextTile.mapY = tile.mapY * 2;
+//		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
+//		if(!tilesCache.hasTileBitmap(nextTile.key))
+//		//if(!tilesCache.isInFile(nextTile.key))
+//		{
+//			getBitmap(nextTile);
+//		}
+//		
+//		nextTile.mapX = tile.mapX * 2;
+//		nextTile.mapY = tile.mapY * 2 + 1;
+//		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
+//		if(!tilesCache.hasTileBitmap(nextTile.key))
+//		//if(!tilesCache.isInFile(nextTile.key))
+//		{
+//			getBitmap(nextTile);
+//		}
+//		
+//		nextTile.mapX = tile.mapX * 2 + 1;
+//		nextTile.mapY = tile.mapY * 2 + 1;
+//		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
+//		if(!tilesCache.hasTileBitmap(nextTile.key))
+//		//if(!tilesCache.isInFile(nextTile.key))
+//		{
+//			getBitmap(nextTile);
+//		}
+//	}
 
 	private void drawLocation(Canvas canvas) 
 	{
@@ -418,10 +416,10 @@ public class OsmMapView extends View
 		for(Tile tile : tiles) 
 		{
 			getBitmap(tile);
-			if(isOnScreen(tile)) 
-			{
-				queueNextZoomAhead(tile);
-			}
+//			if(isOnScreen(tile)) 
+//			{
+//				queueNextZoomAhead(tile);
+//			}
 		}
 
 	}
@@ -444,9 +442,9 @@ public class OsmMapView extends View
 		}
 	}
 
-	public void cacheCurrentMap() 
+	public void cacheCurrentMap(int level) 
 	{
-		new TilesCacher().execute(tiles, tilesCache, zoomLevel);		
+		new TilesCacher().execute(tiles, tilesCache, zoomLevel, level);
 	}
 
 
