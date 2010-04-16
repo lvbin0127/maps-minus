@@ -77,7 +77,6 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 	{
 		if(!tilesCache.hasTileBitmap(tile.key)) 
 		{
-			tile.isOnScreen = false;
 			tilesCache.queueTileRequest(tile.key);
 		}
 	}

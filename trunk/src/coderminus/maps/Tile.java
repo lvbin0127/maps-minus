@@ -8,5 +8,5 @@ public class Tile
 	public int offsetY;
 	public int zoom;
 	public String key;
-	public boolean isOnScreen;
+	//public boolean isOnScreen;
 }

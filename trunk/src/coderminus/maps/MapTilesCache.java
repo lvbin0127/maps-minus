@@ -5,10 +5,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Hashtable;
-import java.util.LinkedList;
-import java.util.Queue;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,9 +13,8 @@ import android.util.Log;
 
 public class MapTilesCache 
 {
-	private Hashtable<String, Bitmap> bitmapCache = new Hashtable<String, Bitmap>();
+	private LRUMap<String, Bitmap> bitmapCache = new LRUMap<String, Bitmap>(10, 60);
 	private static final String cacheBase = "/sdcard/Maps/";
-	private Queue<String> keys = new LinkedList<String>();
 	
 	private DownloaderThreadPool threadPool;
 
@@ -56,11 +51,6 @@ public class MapTilesCache
 	{
 		final File sddir = new File(cacheBase + imageKey + ".tile");
 		return sddir.exists(); 
-	}
-
-	private void clearOldestBitmap() 
-	{
-		bitmapCache.remove(keys.remove());
 	}
 
 	public void addTile(String imageKey, final byte[] bitmapData) 
@@ -107,15 +97,10 @@ public class MapTilesCache
 		}
 	}
 
-	private void cacheBitmap(String imageKey, Bitmap bitmap) 
+	public void cacheBitmap(String imageKey, Bitmap bitmap) 
 	{
-		while(bitmapCache.size() > 60) 
-		{
-			clearOldestBitmap();
-		}
-		
+		bitmapCache.remove(imageKey);
 		bitmapCache.put(imageKey, bitmap);
-		keys.add(imageKey);
 	}
 
 	public Bitmap getTileBitmap(String key) 
@@ -126,7 +111,6 @@ public class MapTilesCache
 	public void clean() 
 	{
 		bitmapCache.clear();
-		keys.clear();
 		threadPool.clearRequests();
 	}
 
