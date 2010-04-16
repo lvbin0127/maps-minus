@@ -6,21 +6,13 @@ import android.os.AsyncTask;
 public class TilesCacher extends AsyncTask<Object, Object, Object>  
 {
 	private Tile nextTile = new Tile();
-	private MapTilesCache tilesCache;
+	private TilesCache tilesCache;
 	
-	protected void onPostExecute(Object result) 
-	{
-		if(result != null) 
-		{
-			//bitmapAcceptor.setBitmap((Bitmap)result, cardInfo.cardUid);
-		}
-    }
-
 	@Override
 	protected Object doInBackground(Object... objs) 
 	{
 		Tile[] tiles  = (Tile[])       objs[0];
-		tilesCache    = (MapTilesCache)objs[1];
+		tilesCache    = (TilesCache)   objs[1];
 		int zoomLevel = (Integer)      objs[2];
 		int stopLevel = (Integer)      objs[3];
 
@@ -39,7 +31,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		nextTile.mapX = tile.mapX * 2;
 		nextTile.mapY = tile.mapY * 2;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
+		if(!tilesCache.hasTile(nextTile))
 		{
 			getBitmap(nextTile);
 		}
@@ -48,7 +40,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		nextTile.mapX = tile.mapX * 2 + 1;
 		nextTile.mapY = tile.mapY * 2;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
+		if(!tilesCache.hasTile(nextTile))
 		{
 			getBitmap(nextTile);
 		}
@@ -57,7 +49,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		nextTile.mapX = tile.mapX * 2;
 		nextTile.mapY = tile.mapY * 2 + 1;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
+		if(!tilesCache.hasTile(nextTile))
 		{
 			getBitmap(nextTile);
 		}
@@ -66,7 +58,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		nextTile.mapX = tile.mapX * 2 + 1;
 		nextTile.mapY = tile.mapY * 2 + 1;
 		nextTile.key  = nextZoomLevel + "/" + nextTile.mapX + "/" + nextTile.mapY + ".png";
-		if(!tilesCache.hasTileBitmap(nextTile.key))
+		if(!tilesCache.hasTile(nextTile))
 		{
 			getBitmap(nextTile);
 		}
@@ -75,10 +67,10 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 	
 	private void getBitmap(Tile tile) 
 	{
-		if(!tilesCache.hasTileBitmap(tile.key)) 
-		{
-			tilesCache.queueTileRequest(tile.key);
-		}
+//		if(!tilesCache.hasTile(tile.key)) 
+//		{
+//			tilesCache.queueTileRequest(tile.key);
+//		}
 	}
 
 }
