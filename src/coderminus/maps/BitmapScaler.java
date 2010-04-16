@@ -3,10 +3,12 @@ package coderminus.maps;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 
-public class BitmapScaler {
+public class BitmapScaler 
+{
 	private static Matrix matrix = new Matrix();
 	
-	public static Bitmap scaleTo(Bitmap bitmap, int newWidth, int newHeight) {
+	public static Bitmap scaleTo(Bitmap bitmap, int newWidth, int newHeight) 
+	{
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
        
@@ -14,6 +16,7 @@ public class BitmapScaler {
         float scaleWidth = ((float) newWidth) / width;
         float scaleHeight = ((float) newHeight) / height;
        
+        matrix.reset();
         // resize the bit map
         matrix.postScale(scaleWidth, scaleHeight);
         // rotate the Bitmap
