@@ -11,12 +11,13 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.location.LocationProvider;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -26,7 +27,6 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.RelativeLayout.LayoutParams;
 
 public class MapsActivity extends Activity implements TileQueueSizeWatcher
 {
@@ -37,6 +37,7 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 	
 	private static final int EDIT_PREFERENCES_CODE = 0;
 	private static final int SELECT_CACHE_LEVEL_DIALOG = 1;
+	protected static final String TAG = "MapsActivity";
     
     private OsmMapView mapView;
     private SharedPreferences prefs;
@@ -48,7 +49,6 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 	private ImageButton zoomInButton;
 	private ImageButton zoomOutButton;
 	private CacheLevelAdapter cacheLevelAdapter;
-	
 //	private Listener gpsStatusListener = new Listener() {
 //
 //		@Override
@@ -76,20 +76,23 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		@Override
 		public void onLocationChanged(Location location) 
 		{
+			Log.d(TAG, "location chaged : lat - " + location.getLatitude() + "lon - " + location.getLongitude());
 			if(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getBoolean("KEY_AUTOFOLLOW_LOCATION", false)) 
 			{
-				onMyLocation();
+				onMyLocation(location);
 			}
 		}
 
 		@Override
 		public void onProviderDisabled(String provider) 
 		{
+			Log.d(TAG, "provider disabled : " + provider);
 		}
 
 		@Override
 		public void onProviderEnabled(String provider) 
 		{
+			Log.d(TAG, "provider enabled : " + provider);
 		}
 
 		@Override
@@ -108,8 +111,8 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
         setContentView(R.layout.main);
         final RelativeLayout rl = (RelativeLayout)findViewById(R.id.relativeLayout);
         
-        
-        mapView = new OsmMapView(this, this);
+        mapView = (OsmMapView) findViewById(R.id.osmMapView);
+        mapView.setSizeWatcher(this);//new OsmMapView(this, this);
         
         prefs = getSharedPreferences("MapsMinus", Context.MODE_PRIVATE);
 		zoomLevel = prefs.getInt("zoomLevel", 1);
@@ -121,14 +124,8 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		
 		//locationManager.addGpsStatusListener(gpsStatusListener);
 		
-		resetLocationListener();
-        
-        rl.addView(mapView, new RelativeLayout.LayoutParams(
-        				LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
-        
         localQueuTextView = new TextView(this);
         localQueuTextView.setTextColor(Color.WHITE);
-        //debugTextView.setTextSize(22f);
         localQueuTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         localQueuTextView.setTypeface(Typeface.DEFAULT_BOLD);
 
@@ -137,19 +134,13 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
         	new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
         debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
         debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-        //rl.addView(localQueuTextView, debugTextParams);
 
         remoteQueueTextView = new TextView(this);
         remoteQueueTextView.setTextColor(Color.WHITE);
-        //debugTextView.setTextSize(22f);
         remoteQueueTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         remoteQueueTextView.setTypeface(Typeface.DEFAULT_BOLD);
 
         remoteQueueTextView.setText(" ");
-        //final RelativeLayout.LayoutParams debugTextParams = 
-        //	new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        //debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-        //debugTextParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
         
         LinearLayout textsLayout = new LinearLayout(this);
         textsLayout.setOrientation(LinearLayout.VERTICAL);
@@ -160,7 +151,6 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
    
         zoomPosTextView = new TextView(this);
         zoomPosTextView.setTextColor(Color.WHITE);
-        //debugTextView.setTextSize(22f);
         zoomPosTextView.setShadowLayer(1.0f, 0.3f, 0.3f, Color.BLACK);
         zoomPosTextView.setTypeface(Typeface.DEFAULT_BOLD);
 
@@ -289,7 +279,6 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 			zoomPosTextView.setText("Z : " + (zoomLevel));
 			zoomOutButton.setEnabled(false);
 		}
-		
 	}
 
 	protected void onZoomIn() 
@@ -333,7 +322,13 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 			}
 			case MENU_MY_LOCATION_ID: 
 			{
-				onMyLocation();
+				Criteria criteria = new Criteria(); 
+				criteria.setAccuracy(Criteria.ACCURACY_FINE); 
+				criteria.setAltitudeRequired(false); 
+				criteria.setBearingRequired(false); 
+				criteria.setCostAllowed(true); 
+				criteria.setPowerRequirement(Criteria.POWER_LOW); 
+				onMyLocation(locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, true)));
 				break;
 			}
 			case MENU_PREFERENCES_ID: 
@@ -367,35 +362,16 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 
 	private void resetLocationListener() 
 	{
-		locationManager.removeUpdates(locationListener);
-		long updateTime = 5;
-		float updateDistance = 5.0f;
-		try 
-		{
-			updateTime = Long.parseLong(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_TIME", "5"));
-			updateDistance = Float.parseFloat(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_DISTANCE", "5"));
-		}
-		catch (Exception e) 
-		{
-			// TODO: handle exception
-		}
-
-		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-				updateTime*1000, updateDistance, locationListener);
-
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-				updateTime*1000, updateDistance, locationListener);
+		unregisterLocationListeners();
+		registerLocationListeners();
 	}
 
-	private void onMyLocation() 
+	private void onMyLocation(Location location) 
 	{
-		LocationProvider locationProvider = locationManager.getProvider(LocationManager.GPS_PROVIDER);
-		
-		Location lastKnownLocaiton = locationManager.getLastKnownLocation(locationProvider.getName());
-		if(lastKnownLocaiton != null) 
+		if(location != null)
 		{
-			Double lat = lastKnownLocaiton.getLatitude();//*1E6;
-			Double lon = lastKnownLocaiton.getLongitude();//*1E6;
+			Double lat = location.getLatitude();//*1E6;
+			Double lon = location.getLongitude();//*1E6;
 			
 			mapView.centerMapTo(lon, lat);
 		}
@@ -463,10 +439,32 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		super.onRestoreInstanceState(savedInstanceState);
 		mapView.setOffsetX(savedInstanceState.getInt("offsetX"));
 		mapView.setOffsetY(savedInstanceState.getInt("offsetY"));
-//		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-//				5000L, 500.0f, locationListener);
 	}
 
+	@Override
+	protected void onResume() {
+		registerLocationListeners();
+		super.onResume();
+	}
+
+	private void registerLocationListeners() {
+		long updateTime = 5;
+		float updateDistance = 5.0f;
+		try 
+		{
+			updateTime = Long.parseLong(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_TIME", "5"));
+			updateDistance = Float.parseFloat(PreferenceManager.getDefaultSharedPreferences(MapsActivity.this).getString("KEY_LOCATION_UPDATE_DISTANCE", "5"));
+		}
+		catch (Exception e) 
+		{
+			// TODO: handle exception
+		}
+
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+				updateTime*1000, updateDistance, locationListener);
+	}
+
+	@Override
     protected void onPause() 
     {
 		super.onPause();
@@ -475,8 +473,12 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 		ed.putInt("offsetY", mapView.getOffsetY());
 		ed.putInt("zoomLevel", zoomLevel);
 		ed.commit();
-		//locationManager.removeUpdates(locationListener);
+		unregisterLocationListeners();
     }
+
+	private void unregisterLocationListeners() {
+		locationManager.removeUpdates(locationListener);
+	}
 
 	@Override
 	public void onSizeChanged(int size, int id) 
