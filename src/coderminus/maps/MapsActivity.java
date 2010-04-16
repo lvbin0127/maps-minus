@@ -1,9 +1,14 @@
 package coderminus.maps;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.location.Location;
@@ -25,12 +30,13 @@ import android.widget.RelativeLayout.LayoutParams;
 
 public class MapsActivity extends Activity implements TileQueueSizeWatcher
 {
-    private static final int MENU_UPDATE_MAP_ID  = Menu.FIRST;
-	private static final int MENU_SAVE_MAP_ID    = Menu.FIRST + 1;
-	private static final int MENU_MY_LOCATION_ID = Menu.FIRST + 2;
-	private static final int MENU_PREFERENCES_ID = Menu.FIRST + 3;
+    private static final int MENU_UPDATE_MAP_ID     = Menu.FIRST;
+	private static final int MENU_SAVE_MAP_ID       = Menu.FIRST +  1;
+	private static final int MENU_MY_LOCATION_ID    = Menu.FIRST +  2;
+	private static final int MENU_PREFERENCES_ID    = Menu.FIRST +  3;
 	
 	private static final int EDIT_PREFERENCES_CODE = 0;
+	private static final int SELECT_CACHE_LEVEL_DIALOG = 1;
     
     private OsmMapView mapView;
     private SharedPreferences prefs;
@@ -41,6 +47,7 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 	private TextView zoomPosTextView;
 	private ImageButton zoomInButton;
 	private ImageButton zoomOutButton;
+	private CacheLevelAdapter cacheLevelAdapter;
 	
 //	private Listener gpsStatusListener = new Listener() {
 //
@@ -53,7 +60,17 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 //		}
 //		
 //	};
-	
+	public class CacheLevel 
+	{
+		public CacheLevel(String text, Bitmap icon) 
+		{
+			this.text = text;
+			this.icon = icon;
+		}
+		String text;
+		Bitmap icon;
+	}
+
 	private LocationListener locationListener = new LocationListener() 
 	{
 		@Override
@@ -189,6 +206,78 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
         zoomInParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
         zoomInParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
         rl.addView(zoomInButton, zoomInParams);
+        
+        cacheLevelAdapter = new CacheLevelAdapter(this);
+		
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 2", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level2)));
+
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 3", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level3)));
+
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 4", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level4)));
+
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 5", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level5)));
+
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 6", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level6)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 7", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level7)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 8", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level8)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 9", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level9)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 10", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level10)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 11", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level11)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 12", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level12)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 13", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level13)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 14", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level14)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 15", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level15)));
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 16", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level16)));
+
+		cacheLevelAdapter.addCacheLevel(
+				new CacheLevel(
+						"Level 17", 
+						BitmapFactory.decodeResource(getResources(), R.drawable.level17)));
     }
     
 	protected void onZoomOut() 
@@ -218,8 +307,9 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 	public boolean onCreateOptionsMenu(Menu menu) 
 	{
 		super.onCreateOptionsMenu(menu);
-        menu.add(0, MENU_UPDATE_MAP_ID , 0, R.string.menu_update_map ).setIcon(android.R.drawable.ic_menu_mapmode    );
+        menu.add(0, MENU_UPDATE_MAP_ID , 0, R.string.menu_update_map ).setIcon(android.R.drawable.ic_menu_mapmode   );
         menu.add(0, MENU_SAVE_MAP_ID   , 0, R.string.menu_save_map   ).setIcon(android.R.drawable.ic_menu_save      );
+        
         menu.add(0, MENU_MY_LOCATION_ID, 0, R.string.menu_my_location).setIcon(android.R.drawable.ic_menu_mylocation );
         menu.add(0, MENU_PREFERENCES_ID, 0, R.string.menu_preferences).setIcon(android.R.drawable.ic_menu_preferences);
 
@@ -313,7 +403,44 @@ public class MapsActivity extends Activity implements TileQueueSizeWatcher
 
 	private void onSaveMap() 
 	{
-		mapView.cacheCurrentMap();
+		if(zoomLevel > 1) 
+		{
+			cacheLevelAdapter.setCurrentZoomLevel(zoomLevel - 2);
+			cacheLevelAdapter.notifyDataSetChanged();
+		}
+		showDialog(SELECT_CACHE_LEVEL_DIALOG);
+	}
+	
+	@Override
+    protected Dialog onCreateDialog(int id) 
+	{
+        switch (id) 
+        {
+	        case SELECT_CACHE_LEVEL_DIALOG:
+	            return new AlertDialog.Builder(this)
+	                .setTitle("Select Cache Level")
+	                .setAdapter(cacheLevelAdapter, new DialogInterface.OnClickListener() 
+	                {
+	                        @Override
+	                        public void onClick(DialogInterface dialog, int which) 
+	                        {
+	                            onCacheLevelSelected(which + zoomLevel);
+	                        }
+	                })
+	                .setNeutralButton("Cancel", new DialogInterface.OnClickListener() 
+	                {
+	                        public void onClick(DialogInterface dialog, int whichButton) 
+	                        {
+	                        }
+	                })
+	                .create();
+        }
+		return null;
+	}
+	
+	protected void onCacheLevelSelected(int level) 
+	{
+		mapView.cacheCurrentMap(level);
 	}
 
 	private void onUpdateMap() 

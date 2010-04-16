@@ -22,17 +22,18 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		Tile[] tiles  = (Tile[])       objs[0];
 		tilesCache    = (MapTilesCache)objs[1];
 		int zoomLevel = (Integer)      objs[2];
+		int stopLevel = (Integer)      objs[3];
 
 		for(Tile tile : tiles) 
 		{
-			queueNextZoomAheadRecursively(tile, zoomLevel);
+			queueNextZoomAheadRecursively(tile, zoomLevel, stopLevel);
 		}
 
 		return null;
 	}
-	private void queueNextZoomAheadRecursively(Tile tile, int queriedZoomLevel) 
+	private void queueNextZoomAheadRecursively(Tile tile, int queriedZoomLevel, int stopLevel) 
 	{
-		if(queriedZoomLevel >= 16) return;
+		if(queriedZoomLevel >= stopLevel) return;
 		int nextZoomLevel = queriedZoomLevel + 1;
 		
 		nextTile.mapX = tile.mapX * 2;
@@ -42,7 +43,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		{
 			getBitmap(nextTile);
 		}
-		queueNextZoomAheadRecursively(nextTile, nextZoomLevel);
+		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 		
 		nextTile.mapX = tile.mapX * 2 + 1;
 		nextTile.mapY = tile.mapY * 2;
@@ -51,7 +52,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		{
 			getBitmap(nextTile);
 		}
-		queueNextZoomAheadRecursively(nextTile, nextZoomLevel);
+		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 		
 		nextTile.mapX = tile.mapX * 2;
 		nextTile.mapY = tile.mapY * 2 + 1;
@@ -60,7 +61,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		{
 			getBitmap(nextTile);
 		}
-		queueNextZoomAheadRecursively(nextTile, nextZoomLevel);
+		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 		
 		nextTile.mapX = tile.mapX * 2 + 1;
 		nextTile.mapY = tile.mapY * 2 + 1;
@@ -69,7 +70,7 @@ public class TilesCacher extends AsyncTask<Object, Object, Object>
 		{
 			getBitmap(nextTile);
 		}
-		queueNextZoomAheadRecursively(nextTile, nextZoomLevel);
+		queueNextZoomAheadRecursively(nextTile, nextZoomLevel, stopLevel);
 	}
 	
 	private void getBitmap(Tile tile) 
