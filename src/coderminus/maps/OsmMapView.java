@@ -33,13 +33,30 @@ public class OsmMapView extends View {
 		public String key;
 
 	}
+	
+	public static class Mercator {
+	    final private static double R_MAJOR = 6378137.0;
+	    //final private static double R_MINOR = 6356752.3142;
+	    final public static double MAX_X = 20037508.34;
+	    final public static double MAX_Y = 20037508.34;
+
+	    public static double  mercX(double lon) {
+	        return R_MAJOR * Math.toRadians(lon);
+	    }
+
+	    public static double mercY(double lat) {
+	    	return (Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180)) *
+	    	       (20037508.34 / 180);
+	    }
+	}
 
 	private Paint paint = new Paint();
 	private int offsetX = 0;
 	private int offsetY = 0;
 	private int touchDownX = 0;
 	private int touchDownY = 0;
-	private int zoomLevel = 0;
+	private int zoomLevel = 1;
+	
 	private Handler handler = new Handler() {
 		@Override
 		public void handleMessage(final Message msg) {
@@ -58,17 +75,19 @@ public class OsmMapView extends View {
 	private Animation zoomInAnimation;
 	private Animation zoomOutAnimation;
 	private int pendingZoomLevel;
+	private int locationOffsetX;
+	private int locationOffsetY;
 
 	public OsmMapView(Context context) {
 		super(context);
         
 		zoomInAnimation = new ScaleAnimation(1.0f, 1.5f, 1.0f, 1.5f, ScaleAnimation.RELATIVE_TO_SELF, 0.5f,
                 ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
-		zoomInAnimation.setDuration(500L);
+		zoomInAnimation.setDuration(300L);
 
 		zoomOutAnimation = new ScaleAnimation(1, 0.5f, 1, 0.5f, ScaleAnimation.RELATIVE_TO_SELF, 0.5f,
                 ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
-		zoomOutAnimation.setDuration(500L);
+		zoomOutAnimation.setDuration(300L);
 	}
 
 	@Override
@@ -83,9 +102,16 @@ public class OsmMapView extends View {
 				if(bitmap != null) {
 					canvas.drawBitmap(bitmap, this.offsetX + tile.offsetX, this.offsetY + tile.offsetY, this.paint);
 				}
+				//drawLocation(canvas);
 			}
 		}
 	}
+
+//	private void drawLocation(Canvas canvas) {
+//		if(isPointOnScreen(locationOffsetX, locationOffsetY)) {
+//			canvas.drawCircle(this.offsetX + locationOffsetX, this.offsetY + locationOffsetY, 4, this.paint);
+//		}
+//	}
 
 	private boolean isOnScreen(Tile tile) {
 		int upperLeftX = tile.offsetX + this.offsetX;
@@ -142,12 +168,14 @@ public class OsmMapView extends View {
 	@Override
 	protected void onAnimationEnd() {
 		if(this.zoomLevel > pendingZoomLevel) {
+			this.zoomLevel = pendingZoomLevel;
 			zoomOut();
 		}
 		else {
+			this.zoomLevel = pendingZoomLevel;
 			zoomIn();
 		}
-		this.zoomLevel = pendingZoomLevel;
+		
 
 		invalidate();
 		super.onAnimationEnd();
@@ -164,13 +192,13 @@ public class OsmMapView extends View {
 				invalidate();
 				return true;
 			case MotionEvent.ACTION_MOVE:
-				this.offsetX = this.touchOffsetX + (int) event.getX() - this.touchDownX;
-				this.offsetY = this.touchOffsetY + (int) event.getY() - this.touchDownY;
+				setOffsetX(this.touchOffsetX + (int) event.getX() - this.touchDownX);
+				setOffsetY(this.touchOffsetY + (int) event.getY() - this.touchDownY);
 				invalidate();
 				return true;
 			case MotionEvent.ACTION_UP:
-				this.offsetX = this.touchOffsetX + (int) event.getX() - this.touchDownX;
-				this.offsetY = this.touchOffsetY + (int) event.getY() - this.touchDownY;
+				setOffsetX(this.touchOffsetX + (int) event.getX() - this.touchDownX);
+				setOffsetY(this.touchOffsetY + (int) event.getY() - this.touchDownY);
 				invalidate();
 		}
 
@@ -186,11 +214,31 @@ public class OsmMapView extends View {
 	}
 
 	public void setOffsetX(int offsetX) {
-		this.offsetX = offsetX;
+		if(offsetX > 0) {
+			this.offsetX = 0;
+		}
+		else if((offsetX - 255) < getMaxOffsetX()) {
+			this.offsetX = getMaxOffsetX() + 255;
+		}
+		else {
+			this.offsetX = offsetX;
+		}
+	}
+
+	private int getMaxOffsetX() {
+		return (int) (0 - (Math.pow(2, zoomLevel)) * 256);
 	}
 
 	public void setOffsetY(int offsetY) {
-		this.offsetY = offsetY;
+		if(offsetY > 0) {
+			this.offsetY = 0;
+		}
+		else if((offsetY - 255) < getMaxOffsetX()) {
+			this.offsetY = getMaxOffsetX() + 255;
+		}
+		else {
+			this.offsetY = offsetY;
+		}
 	}
 
 	public void clearCurrentCache() {
@@ -233,5 +281,57 @@ public class OsmMapView extends View {
 		for(Tile tile : tiles) {
 			getBitmap(tile);
 		}
+	}
+
+	public void centerMapTo(double lon, double lat) {
+		double merc_x = convertLonToMercX(lon);
+		double merc_y = convertLatToMercY(lat);
+		
+		int mapWidth = (int) (Math.pow(2, zoomLevel) * 256);
+		//int mapHeight = mapWidth;
+		
+		double pixelSize = mapWidth/(Mercator.MAX_X * 2);
+		
+		double pixelX = Mercator.MAX_X - (0 - merc_x);
+		double pixelY = Mercator.MAX_Y - merc_y;
+		
+		int pixelOffsetX = (int) (pixelX * pixelSize);
+		int pixelOffsetY = (int) (pixelY * pixelSize);
+		
+		locationOffsetX = 0 - pixelOffsetX;
+		locationOffsetY = 0 - pixelOffsetY;
+		setOffsetX(locationOffsetX + (getWidth ()/2));
+		setOffsetY(locationOffsetY + (getHeight()/2));
+		invalidate();
+		//double tileX = (geoPoint.x +180 )/360 * Math.pow(2, zoomLevel);
+		
+		//double tmpLat = geoPoint.y * Math.PI/180;
+		//double tileY = (1 - Math.log(Math.tan(tmpLat) + Math.cos(tmpLat))/Math.PI)/2 * Math.pow(2, zoomLevel);
+			
+
+	    //return int( (1 - log(tan($lata) + sec($lata))/pi)/2 * 2**$zoom );
+
+		
+	}
+
+	/**
+	 * X
+	 * @param lon
+	 * @return
+	 */
+	private double convertLonToMercX(double lon) {
+		
+		return Mercator.mercX(lon);//lon * 20037508.34 / 180;
+	}
+
+	/**
+	 * Y
+	 * @param lat
+	 * @return
+	 */
+	private double convertLatToMercY(double lat) {
+		//double y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180);
+	    //y = y * 20037508.34 / 180;
+		return Mercator.mercY(lat);
 	}
 }

@@ -61,12 +61,11 @@ public class DownloaderThreadPool {
 		private String urlBase                  = "http://tile.openstreetmap.org/";
 		byte[] buffer                           = new byte[8192];
 
-
 		public DownloaderThread(RequestsQueue requests,
 				MapTilesCache tilesCache, Handler handler) {
-			this.requests   = requests;
-			this.tilesCache = tilesCache;
-			this.handler    = handler;
+			this.requests    = requests;
+			this.tilesCache  = tilesCache;
+			this.handler     = handler;
 			start();
 		}
 
@@ -125,6 +124,7 @@ public class DownloaderThreadPool {
 				out.close();
 				return dataStream.toByteArray();
 			} catch (IOException e) {
+				//failedTiles.add(imageKey);
 			}
 			return null;
 		}
@@ -142,14 +142,15 @@ public class DownloaderThreadPool {
 		
 	}
 
+	private static final int POOL_SIZE = 6;
+
 	private RequestsQueue requests = new RequestsQueue();
 	private Vector<DownloaderThread> threads = new Vector<DownloaderThread>();
 
 	public DownloaderThreadPool(MapTilesCache tilesCache, Context context, Handler handler) {
-		threads.add(new DownloaderThread(requests, tilesCache, handler));
-		threads.add(new DownloaderThread(requests, tilesCache, handler));
-		threads.add(new DownloaderThread(requests, tilesCache, handler));
-		threads.add(new DownloaderThread(requests, tilesCache, handler));
+		for(int index = 0; index < POOL_SIZE; ++index) {
+			threads.add(new DownloaderThread(requests, tilesCache, handler));
+		}
 	}
 
 	public void addRequest(String imageKey) {

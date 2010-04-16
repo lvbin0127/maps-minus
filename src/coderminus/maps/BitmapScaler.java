@@ -4,7 +4,8 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 
 public class BitmapScaler {
-
+	private static Matrix matrix = new Matrix();
+	
 	public static Bitmap scaleTo(Bitmap bitmap, int newWidth, int newHeight) {
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
@@ -13,8 +14,6 @@ public class BitmapScaler {
         float scaleWidth = ((float) newWidth) / width;
         float scaleHeight = ((float) newHeight) / height;
        
-        // create matrix for the manipulation
-        Matrix matrix = new Matrix();
         // resize the bit map
         matrix.postScale(scaleWidth, scaleHeight);
         // rotate the Bitmap

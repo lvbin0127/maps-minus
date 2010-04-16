@@ -4,6 +4,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,12 +19,45 @@ import android.widget.RelativeLayout;
 import android.widget.RelativeLayout.LayoutParams;
 
 public class MapsActivity extends Activity {
-    private static final int MENU_UPDATE_MAP_ID = Menu.FIRST;
-	private static final int MENU_SAVE_MAP_ID   = Menu.FIRST + 1;
+    private static final int MENU_UPDATE_MAP_ID  = Menu.FIRST;
+	private static final int MENU_SAVE_MAP_ID    = Menu.FIRST + 1;
+	private static final int MENU_MY_LOCATION_ID = Menu.FIRST + 2;
     
     private OsmMapView mapView;
     private SharedPreferences prefs;
-	private int zoomLevel = 0;
+	private int zoomLevel = 1;
+	private LocationManager locationManager = null;
+//	private Listener gpsStatusListener = new Listener() {
+//
+//		@Override
+//		public void onGpsStatusChanged(int event) {
+//			//GpsStatus gpsStatus = locationManager.getGpsStatus(null);
+//			
+//			//onMyLocation();
+//			//gpsStatus.
+//		}
+//		
+//	};
+	
+	private LocationListener locationListener = new LocationListener() {
+
+		@Override
+		public void onLocationChanged(Location location) {
+			//onMyLocation();
+		}
+
+		@Override
+		public void onProviderDisabled(String provider) {
+		}
+
+		@Override
+		public void onProviderEnabled(String provider) {
+		}
+
+		@Override
+		public void onStatusChanged(String provider, int status, Bundle extras) {
+		}
+	};
 
 	/** Called when the activity is first created. */
     @Override
@@ -35,10 +72,16 @@ public class MapsActivity extends Activity {
         mapView = new OsmMapView(this);
         
         prefs = getSharedPreferences("MapsMinus", Context.MODE_PRIVATE);
-		mapView.setOffsetX(prefs.getInt("offsetX", 0));
-		mapView.setOffsetY(prefs.getInt("offsetY", 0));
 		zoomLevel = prefs.getInt("zoomLevel", 0);
 		mapView.setZoom(zoomLevel);
+		mapView.setOffsetX(prefs.getInt("offsetX", 0));
+		mapView.setOffsetY(prefs.getInt("offsetY", 0));
+		
+		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+		
+		//locationManager.addGpsStatusListener(gpsStatusListener);
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+				5000L, 500.0f, locationListener);
         
         rl.addView(mapView, new RelativeLayout.LayoutParams(
         				LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
@@ -94,8 +137,9 @@ public class MapsActivity extends Activity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		super.onCreateOptionsMenu(menu);
-        menu.add(0, MENU_UPDATE_MAP_ID, 0, R.string.menu_update_map).setIcon(android.R.drawable.ic_menu_mapmode);
-        menu.add(0, MENU_SAVE_MAP_ID  , 0, R.string.menu_save_map  ).setIcon(android.R.drawable.ic_menu_save   );
+        menu.add(0, MENU_UPDATE_MAP_ID , 0, R.string.menu_update_map ).setIcon(android.R.drawable.ic_menu_mapmode   );
+        //menu.add(0, MENU_SAVE_MAP_ID   , 0, R.string.menu_save_map   ).setIcon(android.R.drawable.ic_menu_save      );
+        menu.add(0, MENU_MY_LOCATION_ID, 0, R.string.menu_my_location).setIcon(android.R.drawable.ic_menu_mylocation);
 
         return true;
     }
@@ -103,22 +147,37 @@ public class MapsActivity extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case MENU_UPDATE_MAP_ID: {
-			onUpdateMap();
-			break;
-		}
-		case MENU_SAVE_MAP_ID: {
-			onSaveMap();
-			break;
-		}
-	}			
+			case MENU_UPDATE_MAP_ID: {
+				onUpdateMap();
+				break;
+			}
+			case MENU_SAVE_MAP_ID: {
+				onSaveMap();
+				break;
+			}
+			case MENU_MY_LOCATION_ID: {
+				onMyLocation();
+				break;
+			}
+		}			
 
 		return super.onOptionsItemSelected(item);
 	}
 
+	private void onMyLocation() {
+		LocationProvider locationProvider = locationManager.getProvider(LocationManager.GPS_PROVIDER);
+		
+		Location lastKnownLocaiton = locationManager.getLastKnownLocation(locationProvider.getName());
+		if(lastKnownLocaiton != null) {
+			Double lat = lastKnownLocaiton.getLatitude();//*1E6;
+			Double lon = lastKnownLocaiton.getLongitude();//*1E6;
+			
+			mapView.centerMapTo(lon, lat);
+		}
+	}
+
 	private void onSaveMap() {
 		mapView.cacheCurrentMap();
-		
 	}
 
 	private void onUpdateMap() {

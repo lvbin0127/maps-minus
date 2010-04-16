@@ -30,7 +30,7 @@ public class MapTilesCache {
 	}
 
 	void loadFromFile(String imageKey) {
-		File sddir = new File(cacheBase + imageKey + ".tile");
+		final File sddir = new File(cacheBase + imageKey + ".tile");
 		if(sddir.exists()) {
 			Bitmap bitmap = BitmapFactory.decodeFile(cacheBase + imageKey + ".tile");
 			if(bitmap != null) {
@@ -71,7 +71,7 @@ public class MapTilesCache {
 	}
 
 	private void ensureFolderExists(String path) {
-        File folder = new File(path);
+        final File folder = new File(path);
 		if (!folder.mkdirs()) {
 			//throw new Exception();
 		}
@@ -107,7 +107,7 @@ public class MapTilesCache {
 	}
 
 	private void deleteFile(String fileName) {
-		File file = new File(fileName);
+		final File file = new File(fileName);
 		file.delete();
 	}
 
